@@ -53,7 +53,7 @@ export function useListUi() {
   const visible = computed(() => {
     const q = query.value.trim().toLowerCase()
     return todos.value
-      .filter((t) => matches(effDone(t), t, filter.value) && (!q || t.title.toLowerCase().includes(q)))
+      .filter((t) => matches(effDone(t), t, filter.value) && (!q || t.title.toLowerCase().includes(q) || (t.notes ?? '').toLowerCase().includes(q)))
       .sort((a, b) => {
         const da = effDone(a)
         const db = effDone(b)

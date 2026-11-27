@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_HEX, PRIORITY_LABEL, type Priority } from '../types'
 import { dueChipText, today } from '../utils/date'
@@ -10,7 +9,6 @@ import Icon from './Icon.vue'
 import PriorityPicker from './PriorityPicker.vue'
 
 const { add } = useTodos()
-const isSm = useIsSm()
 
 const draft = ref('')
 const due = ref('')
@@ -41,7 +39,7 @@ function submit() {
         v-model="draft"
         maxlength="200"
         autocomplete="off"
-        :placeholder="isSm ? 'พิมพ์งานใหม่ตรงนี้ แล้วกด Enter' : 'พิมพ์งานใหม่ตรงนี้'"
+        placeholder="พิมพ์งานใหม่ตรงนี้"
         class="field box-border h-13 min-w-0 flex-1 text-[16px] shadow-brutal-sm sm:h-13.5 sm:text-[17px] sm:shadow-none"
       />
       <button
@@ -52,6 +50,9 @@ function submit() {
         เพิ่ม +
       </button>
     </div>
+    <p v-if="draft.length >= 170" class="m-0 -mt-1 text-[12px] font-semibold" :class="draft.length >= 200 ? 'text-danger' : 'text-muted'" aria-live="polite">
+      {{ draft.length >= 200 ? 'ชื่องานยาวได้ไม่เกิน 200 ตัวอักษร ใส่รายละเอียดเพิ่มในโน้ตได้นะ' : `เหลืออีก ${200 - draft.length} ตัวอักษร` }}
+    </p>
 
     <div class="flex flex-wrap items-center gap-2 sm:gap-2.5">
       <AnchoredPicker label="กำหนดส่ง" panel-class="w-95 max-w-[80vw]">

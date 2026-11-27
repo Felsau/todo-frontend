@@ -72,6 +72,11 @@ export function shortDate(iso: string): string {
   return d.getFullYear() === parseISO(today.value).getFullYear() ? fShort.format(d) : fShortYear.format(d)
 }
 
+/** "27 พ.ย. 2569", always with the Buddhist year (date field text). */
+export function fullShortDate(iso: string): string {
+  return fShortYear.format(parseISO(iso))
+}
+
 /** "พฤศจิกายน 2569" */
 export function monthLabel(iso: string): string {
   return fMonthYear.format(parseISO(iso))
@@ -123,7 +128,7 @@ export function dueOptions(todayISO: string): { value: string; label: string }[]
   return [
     { value: todayISO, label: 'วันนี้' },
     { value: addDays(todayISO, 1), label: 'พรุ่งนี้' },
-    { value: addDays(todayISO, 7), label: '+7 วัน' },
+    { value: addDays(todayISO, 7), label: 'อีก 7 วัน' },
     { value: '', label: 'ไม่มีกำหนด' },
   ]
 }

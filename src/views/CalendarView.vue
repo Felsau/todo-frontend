@@ -168,6 +168,7 @@ const navBtn =
               :key="t.id"
               class="box-border block h-6 overflow-hidden rounded-md border-2 px-1.5 text-[12px] leading-5 font-semibold text-ellipsis whitespace-nowrap"
               :class="chipClass(t)"
+              :title="t.title"
             >
               {{ t.title }}
             </span>

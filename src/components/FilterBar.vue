@@ -5,17 +5,17 @@ const { filter, counts } = useListUi()
 </script>
 
 <template>
-  <div class="relative -mx-5 sm:mx-0">
+  <div>
     <div
       role="group"
       aria-label="ตัวกรอง"
-      class="flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
+      class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
     >
       <button
         v-for="f in FILTERS"
         :key="f.key"
         type="button"
-        class="flex h-11 shrink-0 items-center gap-1.5 rounded-full border-2 py-0 pr-2 pl-3.5 text-[14px] font-semibold whitespace-nowrap sm:gap-2 sm:pl-4"
+        class="flex h-11 shrink-0 items-center justify-between gap-1.5 rounded-full sm:justify-start border-2 py-0 pr-2 pl-3.5 text-[14px] font-semibold whitespace-nowrap sm:gap-2 sm:pl-4"
         :class="filter === f.key ? 'bg-ink text-white' : 'bg-white text-ink'"
         :aria-pressed="filter === f.key"
         @click="filter = f.key"
@@ -35,9 +35,5 @@ const { filter, counts } = useListUi()
         </span>
       </button>
     </div>
-    <div
-      aria-hidden="true"
-      class="pointer-events-none absolute top-0 right-0 bottom-1 w-8 bg-linear-to-r from-paper/0 to-paper sm:hidden"
-    ></div>
   </div>
 </template>

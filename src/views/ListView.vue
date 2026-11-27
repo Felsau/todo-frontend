@@ -72,7 +72,7 @@ function doClear() {
         <button type="button" class="btn-pill" @click="confirmClear = false">ยกเลิก</button>
       </div>
       <button v-else type="button" class="btn-pill" :disabled="doneCount === 0" @click="confirmClear = true">
-        ล้างรายการที่เสร็จแล้ว
+        ลบงานที่เสร็จแล้ว
       </button>
     </div>
   </template>
