@@ -17,8 +17,19 @@ const { openDetail } = useDetail()
 const isSm = useIsSm()
 
 const due = () => dueInfo(props.todo.due_date, props.todo.is_completed, today.value)
-const toggleLabel = () =>
-  `${props.todo.is_completed ? 'ยกเลิกเสร็จ' : 'ทำเครื่องหมายว่าเสร็จ'}: ${props.todo.title}`
+/** A toggle keeps one name; aria-pressed tells whether the task is done. */
+const toggleLabel = () => `ทำเครื่องหมายว่าเสร็จ: ${props.todo.title}`
+
+/** detail 0 means the button was pressed with Enter or Space. */
+const onRemove = (e: MouseEvent) => remove(props.todo.id, { keyboard: e.detail === 0 })
+
+/** The card body opens the detail, unless the person was selecting text to copy (R2-22). */
+function onBodyClick() {
+  if (locked[props.todo.id]) return
+  const sel = window.getSelection()
+  if (sel && !sel.isCollapsed && sel.toString().trim() !== '') return
+  openDetail(props.todo.id)
+}
 </script>
 
 <template>
@@ -65,19 +76,17 @@ const toggleLabel = () =>
         class="icon-btn"
         :aria-label="`ลบ: ${todo.title}`"
         :disabled="locked[todo.id]"
-        @click="remove(todo.id)"
+        @click="onRemove"
       >
         <Icon name="trash" :size="20" :stroke="2.5" />
       </button>
     </div>
 
-    <!-- The whole card body also opens the detail; the pencil is the keyboard path. -->
-    <button
-      type="button"
-      tabindex="-1"
-      class="flex min-h-11 flex-1 cursor-pointer flex-col gap-3 border-0 bg-transparent px-1 py-0 text-left disabled:cursor-not-allowed"
-      :disabled="locked[todo.id]"
-      @click="openDetail(todo.id)"
+    <!-- The whole card body also opens the detail (the pencil is the keyboard path); its text can be selected. -->
+    <div
+      class="flex min-h-11 flex-1 flex-col gap-3 px-1 py-0 text-left"
+      :class="locked[todo.id] ? 'cursor-not-allowed' : 'cursor-pointer'"
+      @click="onBodyClick"
     >
       <span
         class="text-[19px] leading-normal font-bold wrap-anywhere decoration-2"
@@ -93,7 +102,7 @@ const toggleLabel = () =>
         <Icon name="calendar" :size="13" :stroke="3" />
         {{ due()!.label }}
       </span>
-    </button>
+    </div>
   </li>
 
   <!-- mobile row -->
@@ -148,7 +157,7 @@ const toggleLabel = () =>
       class="icon-btn"
       :aria-label="`ลบ: ${todo.title}`"
       :disabled="locked[todo.id]"
-      @click="remove(todo.id)"
+      @click="onRemove"
     >
       <Icon name="trash" :size="20" :stroke="2.5" />
     </button>

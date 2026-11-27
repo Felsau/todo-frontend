@@ -10,9 +10,13 @@ import Icon from './Icon.vue'
 const { waitedSec } = useTodos()
 /** Eases towards 95% over about a minute, so the bar never claims to be done early. */
 const progress = computed(() => Math.round(95 * (1 - Math.exp(-waitedSec.value / 25))))
-const phrase = computed(() =>
-  waitedSec.value < 20 ? 'แป๊บนึงนะ' : waitedSec.value < 45 ? 'กำลังมา ใกล้แล้ว' : 'อีกนิดเดียวจริงๆ',
-)
+const phrase = computed(() => {
+  const s = waitedSec.value
+  if (s < 20) return 'แป๊บนึงนะ'
+  if (s < 45) return 'กำลังมา ใกล้แล้ว'
+  if (s < 70) return 'อีกนิดเดียวนะ'
+  return 'นานกว่าปกตินิดนึง ลองเช็กอินเทอร์เน็ตดูด้วยนะ'
+})
 </script>
 
 <template>

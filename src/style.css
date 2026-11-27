@@ -46,6 +46,29 @@
   }
 }
 
+/* Short screens: phone in landscape, browser zoomed to 400% (QA round 2, R2-13). */
+@custom-variant short {
+  @media (max-height: 480px) {
+    @slot;
+  }
+}
+
+/* Outline drawn for a moment around a card the app wants you to notice. */
+@keyframes flash-outline {
+  0%,
+  55% {
+    outline-color: var(--color-focus);
+  }
+  100% {
+    outline-color: transparent;
+  }
+}
+.flash {
+  outline: 4px solid transparent;
+  outline-offset: 3px;
+  animation: flash-outline 1.6s ease-out;
+}
+
 @layer base {
   *,
   ::before,

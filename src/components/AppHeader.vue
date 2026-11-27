@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useListUi } from '../composables/useListUi'
 import { useTodos } from '../composables/useTodos'
@@ -22,6 +22,14 @@ function showOverdue() {
   if (!onList.value) void router.push('/')
 }
 
+/** Opening search on a phone puts the cursor straight in the box (R2-16). */
+async function onSearchToggle() {
+  toggleSearch()
+  if (!searchOpen.value) return
+  await nextTick()
+  document.querySelector<HTMLInputElement>('[data-search-input]')?.focus()
+}
+
 const navLink =
   'flex h-11 flex-1 items-center justify-center gap-2 px-5 text-[14px] font-semibold text-ink no-underline sm:flex-none aria-[current=page]:bg-ink aria-[current=page]:text-white'
 </script>
@@ -30,7 +38,7 @@ const navLink =
   <header class="flex flex-wrap items-end justify-between gap-x-3 gap-y-4 sm:gap-x-5">
     <div class="order-1 flex flex-col gap-0.5 sm:gap-1">
       <p class="m-0 text-[13px] leading-normal font-semibold text-muted">{{ eyebrowDate(today) }}</p>
-      <h1 class="m-0 text-[40px] leading-[1.2] font-bold lg:text-[56px]">ลุยงาน!</h1>
+      <h1 tabindex="-1" class="m-0 text-[40px] leading-[1.2] font-bold focus:outline-none lg:text-[56px]">ลุยงาน!</h1>
     </div>
 
     <nav
@@ -55,7 +63,7 @@ const navLink =
         :class="searchOpen && 'bg-accent'"
         :aria-pressed="searchOpen"
         aria-label="ค้นหาและเรียงลำดับ"
-        @click="toggleSearch"
+        @click="onSearchToggle"
       >
         <Icon name="search" :size="20" />
       </button>

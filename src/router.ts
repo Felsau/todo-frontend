@@ -10,3 +10,8 @@ export const router = createRouter({
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
+
+// Each view has its own tab title (QA round 2, R2-22).
+router.afterEach((to) => {
+  document.title = to.name === 'calendar' ? 'ปฏิทิน · ลุยงาน!' : 'ลุยงาน!'
+})

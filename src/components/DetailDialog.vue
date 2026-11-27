@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, toRef, useId, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRef, useId, watch } from 'vue'
 import { ApiError } from '../api/todos'
 import { useDetail } from '../composables/useDetail'
 import { trapTab, useScrollLock } from '../composables/useFocus'
+import { useHistoryModal } from '../composables/useHistoryModal'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_LABEL, type Priority, type TodoPatch } from '../types'
 import { stamp } from '../utils/date'
+import { isBlank } from '../utils/text'
 import DuePicker from './DuePicker.vue'
 import Icon from './Icon.vue'
 import PriorityPicker from './PriorityPicker.vue'
@@ -14,10 +16,12 @@ import PriorityPicker from './PriorityPicker.vue'
 /*
  * Edit dialog (640px and up) and bottom sheet (below 640px).
  * Fields: ชื่องาน, สถานะ, กำหนดส่ง, ความสำคัญ, โน้ต.
- * Esc, the X, the ปิด/ยกเลิก button and the backdrop all call requestClose().
+ * Esc, the X, the ปิด button, the backdrop and the phone's Back button all close it,
+ * asking first when there are unsaved changes.
  */
+const NOTES_MAX = 2000
 const { detailId, closeDetail } = useDetail()
-const { todos, saveDetail, remove, showToast } = useTodos()
+const { todos, toast, saveDetail, remove, forget, showToast, dismissToast } = useTodos()
 const isSm = useIsSm()
 
 const uid = useId()
@@ -53,6 +57,8 @@ const showConfirm = ref(false)
 const saving = ref(false)
 const saveFailed = ref(false)
 const fieldErrors = reactive<Record<string, string>>({})
+/** A paste made the note longer than the limit and the end was cut off (R2-09). */
+const notesCut = ref(false)
 
 useScrollLock(isOpen)
 
@@ -78,7 +84,10 @@ watch(
     original.value = { ...draft }
     showConfirm.value = false
     saving.value = false
+    notesCut.value = false
     clearErrors()
+    // An old error toast would only cover the dialog; the dialog shows its own errors (R2-07).
+    if (toast.value?.kind === 'error') dismissToast()
     await nextTick()
     titleInput.value?.focus()
   },
@@ -102,7 +111,7 @@ const changes = computed<TodoPatch>(() => {
   return patch
 })
 const dirty = computed(() => Object.keys(changes.value).length > 0)
-const titleEmpty = computed(() => draft.title.trim().length === 0)
+const titleEmpty = computed(() => isBlank(draft.title))
 const canSave = computed(() => dirty.value && !titleEmpty.value && !saving.value)
 
 // Any edit cancels the discard question and clears old errors.
@@ -117,16 +126,54 @@ watch(
 const band = computed(() => (draft.is_completed ? 'bg-white' : PRIORITY_BG[draft.priority]))
 const priLabel = computed(() => (draft.is_completed ? 'เสร็จแล้ว' : PRIORITY_LABEL[draft.priority]))
 
+async function askDiscard() {
+  showConfirm.value = true
+  await nextTick()
+  keepButton.value?.focus()
+}
+
 async function requestClose() {
   if (saving.value) return
-  if (dirty.value) {
-    showConfirm.value = true
-    await nextTick()
-    keepButton.value?.focus()
-  } else {
-    closeDetail()
+  if (dirty.value) await askDiscard()
+  else closeDetail()
+}
+
+// The phone's Back button closes the detail too, and asks first when there are unsaved changes (R2-01).
+useHistoryModal({
+  key: 'task',
+  open: isOpen,
+  value: () => String(detailId.value),
+  onBack: () => closeDetail(),
+  canLeave: () => {
+    if (!isOpen.value) return true
+    if (saving.value) return false
+    if (!dirty.value) return true
+    void askDiscard()
+    return false
+  },
+})
+
+// Refreshing or closing the tab with unsaved changes asks first (R2-19).
+function onBeforeUnload(e: BeforeUnloadEvent) {
+  if (isOpen.value && dirty.value) {
+    e.preventDefault()
+    e.returnValue = ''
   }
 }
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
+
+function onNotesPaste(e: ClipboardEvent) {
+  const el = e.target as HTMLTextAreaElement
+  const pasted = e.clipboardData?.getData('text') ?? ''
+  notesCut.value = el.value.length - (el.selectionEnd - el.selectionStart) + pasted.length > NOTES_MAX
+}
+watch(
+  () => draft.notes.length,
+  (n) => {
+    if (n < NOTES_MAX) notesCut.value = false
+  },
+)
 
 function keepEditing() {
   showConfirm.value = false
@@ -161,6 +208,13 @@ async function save() {
     closeDetail()
     showToast('saved', 'บันทึกแล้ว')
   } catch (err) {
+    if (err instanceof ApiError && err.isNotFound) {
+      // Deleted in another tab or on another device: saving again could never work (R2-08).
+      closeDetail()
+      forget(t.id)
+      showToast('error', 'งานนี้ถูกลบไปแล้ว จากแท็บหรือเครื่องอื่น')
+      return
+    }
     if (err instanceof ApiError && err.isValidation && err.errors.length > 0) {
       for (const e of err.errors) {
         fieldErrors[e.field] =
@@ -176,11 +230,11 @@ async function save() {
   }
 }
 
-function deleteTodo() {
+function deleteTodo(e: MouseEvent) {
   const t = todo.value
   if (!t) return
   closeDetail()
-  remove(t.id)
+  remove(t.id, { keyboard: e.detail === 0 }) // detail 0: pressed with Enter or Space
 }
 
 const statusOptions = [
@@ -189,23 +243,25 @@ const statusOptions = [
 ]
 const titleError = computed(() => (titleEmpty.value ? 'ต้องมีชื่องานอย่างน้อย 1 ตัวอักษร' : (fieldErrors.title ?? '')))
 
+// On short screens (landscape phone, 400% zoom) the dialog takes the whole height and the
+// footer scrolls with the fields, so the fields get the room (R2-13).
 const sectionClass = toRef(() =>
   isSm.value
-    ? 'relative w-150 max-w-full max-h-[calc(100dvh-3rem)] rounded-[20px] shadow-brutal-xl'
-    : 'absolute inset-x-0 bottom-0 top-24 rounded-t-3xl border-b-0',
+    ? 'relative w-150 max-w-full max-h-[calc(100dvh-3rem)] rounded-[20px] shadow-brutal-xl short:max-h-dvh short:rounded-none'
+    : 'absolute inset-x-0 bottom-0 top-24 rounded-t-3xl border-b-0 short:top-0 short:rounded-none',
 )
 </script>
 
 <template>
   <div
     v-if="isOpen"
-    class="fixed inset-0 z-40 bg-ink/55 sm:flex sm:items-center sm:justify-center sm:p-6"
+    class="fixed inset-0 z-40 bg-ink/55 sm:flex sm:items-center sm:justify-center sm:p-6 short:p-0"
     @keydown="onKeydown"
   >
     <button
       type="button"
       tabindex="-1"
-      aria-label="ปิด"
+      aria-hidden="true"
       class="absolute inset-0 size-full cursor-default border-0 bg-transparent p-0"
       @click="requestClose"
     />
@@ -219,7 +275,7 @@ const sectionClass = toRef(() =>
       :class="sectionClass"
     >
       <div
-        class="flex items-center justify-between gap-3 border-b-2 py-2.5 pr-3.5 pl-5 sm:py-3 sm:pl-5.5"
+        class="flex items-center justify-between gap-3 border-b-2 py-2.5 pr-3.5 pl-5 sm:py-3 sm:pl-5.5 short:py-1"
         :class="band"
       >
         <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
@@ -233,8 +289,10 @@ const sectionClass = toRef(() =>
         </button>
       </div>
 
-      <form class="flex min-h-0 flex-1 flex-col" novalidate @submit.prevent="save">
-        <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4.5 sm:gap-4.5 sm:p-5.5">
+      <form class="flex min-h-0 flex-1 flex-col short:overflow-y-auto" novalidate @submit.prevent="save">
+        <div
+          class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4.5 sm:gap-4.5 sm:p-5.5 short:flex-none short:overflow-visible"
+        >
           <div class="flex flex-col gap-1">
             <label :for="ids.title" class="label">ชื่องาน</label>
             <input
@@ -301,10 +359,17 @@ const sectionClass = toRef(() =>
               :id="ids.notes"
               v-model="draft.notes"
               rows="5"
-              maxlength="2000"
+              :maxlength="NOTES_MAX"
               :placeholder="isSm ? 'จดรายละเอียด ลิงก์ หรือขั้นตอนเพิ่มเติม...' : 'จดรายละเอียดเพิ่มเติม...'"
-              class="box-border w-full rounded-xl border-2 bg-white px-3 py-2.5 text-[14px] leading-normal font-medium max-sm:resize-none sm:resize-y sm:px-3.5 sm:py-3 sm:text-[15px]"
+              class="box-border w-full rounded-xl border-2 bg-white px-3 py-2.5 text-[16px] leading-normal font-medium max-sm:resize-none sm:resize-y sm:px-3.5 sm:py-3 sm:text-[15px]"
+              @paste="onNotesPaste"
             ></textarea>
+            <div v-if="notesCut || draft.notes.length >= NOTES_MAX - 200" class="flex justify-between gap-2">
+              <span v-if="notesCut" role="alert" class="text-[12px] leading-normal font-semibold text-danger">
+                ข้อความยาวเกิน 2000 ตัวอักษร ส่วนท้ายถูกตัดออก
+              </span>
+              <span class="ml-auto text-[12px] font-semibold text-muted">{{ draft.notes.length }}/{{ NOTES_MAX }}</span>
+            </div>
             <span v-if="fieldErrors.notes" role="alert" class="text-[12px] leading-normal font-semibold text-danger">
               {{ fieldErrors.notes }}
             </span>
@@ -364,7 +429,7 @@ const sectionClass = toRef(() =>
               class="box-border h-11 flex-none rounded-xl border-2 bg-white px-4 text-[14px] font-semibold"
               @click="requestClose"
             >
-              {{ dirty ? 'ยกเลิก' : 'ปิด' }}
+              ปิด
             </button>
             <button type="submit" class="btn-primary max-sm:flex-1 sm:px-5.5" :disabled="!canSave" :aria-busy="saving || undefined">
               {{ saving ? 'กำลังบันทึก...' : 'บันทึก' }}

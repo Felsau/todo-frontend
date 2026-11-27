@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import AddBar from '../components/AddBar.vue'
 import EmptyIllustration from '../components/EmptyIllustration.vue'
 import FilterBar from '../components/FilterBar.vue'
@@ -22,9 +22,25 @@ watch(doneCount, () => {
   confirmClear.value = false
 })
 
-function doClear() {
+const confirmId = useId()
+const clearBtn = ref<HTMLButtonElement | null>(null)
+const cancelBtn = ref<HTMLButtonElement | null>(null)
+
+async function openClear() {
+  confirmClear.value = true
+  await nextTick()
+  cancelBtn.value?.focus()
+}
+
+async function cancelClear() {
   confirmClear.value = false
-  void clearCompleted()
+  await nextTick()
+  clearBtn.value?.focus()
+}
+
+function doClear(e: MouseEvent) {
+  confirmClear.value = false
+  void clearCompleted({ keyboard: e.detail === 0 }) // detail 0: pressed with Enter or Space
 }
 </script>
 
@@ -64,14 +80,20 @@ function doClear() {
     </ul>
 
     <div v-if="total > 0 && (isSm || doneCount > 0)" class="flex flex-wrap items-center justify-center gap-3 sm:justify-end">
-      <div v-if="confirming" role="group" aria-label="ยืนยันการลบ" class="flex flex-wrap items-center justify-center gap-2">
-        <span class="w-full text-center text-[13px] font-semibold sm:w-auto sm:text-[14px]">
-          ลบงานที่เสร็จแล้ว {{ doneCount }} รายการ?
+      <div
+        v-if="confirming"
+        role="group"
+        :aria-labelledby="confirmId"
+        class="flex flex-wrap items-center justify-center gap-2"
+        @keydown.esc.prevent="cancelClear"
+      >
+        <span :id="confirmId" class="w-full text-center text-[13px] font-semibold sm:w-auto sm:text-[14px]">
+          ลบงานที่เสร็จแล้ว {{ doneCount }} งาน?
         </span>
         <button type="button" class="btn-pill border-ink bg-danger text-white" @click="doClear">ลบเลย</button>
-        <button type="button" class="btn-pill" @click="confirmClear = false">ยกเลิก</button>
+        <button ref="cancelBtn" type="button" class="btn-pill" @click="cancelClear">ยกเลิก</button>
       </div>
-      <button v-else type="button" class="btn-pill" :disabled="doneCount === 0" @click="confirmClear = true">
+      <button v-else ref="clearBtn" type="button" class="btn-pill" :disabled="doneCount === 0" @click="openClear">
         ลบงานที่เสร็จแล้ว
       </button>
     </div>

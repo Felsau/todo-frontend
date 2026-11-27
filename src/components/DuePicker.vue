@@ -5,7 +5,7 @@ import Icon from './Icon.vue'
 
 /*
  * The one due-date picker used by the add bar and the detail dialog:
- * วันนี้ / พรุ่งนี้ / อีก 7 วัน / ไม่มีกำหนด plus a "เลือกวัน" date input.
+ * วันนี้ / พรุ่งนี้ / อีก 7 วัน / ไม่มีกำหนดส่ง plus a "เลือกวัน" date input.
  * The native date input shows the browser's own format (often mm/dd/yyyy and the
  * Christian year), so it sits invisible over a Thai label and opens its calendar on click.
  */
@@ -71,7 +71,7 @@ function choose(value: string) {
             :id="inputId"
             type="date"
             :value="props.modelValue"
-            class="absolute inset-0 cursor-pointer opacity-0"
+            class="absolute inset-0 cursor-pointer text-[16px] opacity-0"
             @click="openPicker"
             @keydown.enter.prevent="openPicker"
             @change="onDate"
@@ -86,13 +86,13 @@ function choose(value: string) {
       >
         <Icon name="calendar" :size="16" />
         <span aria-hidden="true" :class="!props.modelValue && 'text-muted'">
-          {{ props.modelValue ? fullShortDate(props.modelValue) : 'แตะเพื่อเลือกวัน' }}
+          {{ props.modelValue ? fullShortDate(props.modelValue) : 'กดเพื่อเลือกวัน' }}
         </span>
         <input
           :id="inputId"
           type="date"
           :value="props.modelValue"
-          class="absolute inset-0 cursor-pointer opacity-0"
+          class="absolute inset-0 cursor-pointer text-[16px] opacity-0"
           @click="openPicker"
           @change="onDate"
           @keydown.enter.prevent="emit('done')"

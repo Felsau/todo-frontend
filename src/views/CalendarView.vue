@@ -7,7 +7,7 @@ import LoadError from '../components/LoadError.vue'
 import { useCalendarTodos } from '../composables/useCalendarTodos'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
-import { WEEKDAY_SHORT, addDays, dayMonthLong, monthLabel, parseISO, startOfWeek, today, toISO } from '../utils/date'
+import { WEEKDAY_SHORT, addDays, dayMonthLong, monthLabel, parseISO, startOfWeek, today, toISO, weekLabel } from '../utils/date'
 
 /*
  * Calendar view. From 640px: a month grid (Sunday first) with a side panel.
@@ -96,8 +96,9 @@ function goToday() {
   weekStart.value = startOfWeek(today.value)
 }
 
-const heading = computed(() => monthLabel(isSm.value ? monthStart.value : selected.value))
-const countLabel = (iso: string) => `${dayMonthLong(iso)} มี ${on(iso).length} งาน`
+const heading = computed(() => (isSm.value ? monthLabel(monthStart.value) : weekLabel(weekStart.value)))
+const countLabel = (iso: string) =>
+  `${iso === today.value ? 'วันนี้ ' : ''}${dayMonthLong(iso)} มี ${on(iso).length} งาน`
 
 const navBtn =
   'flex size-11 items-center justify-center rounded-xl border-2 bg-white p-0'
@@ -110,7 +111,9 @@ const navBtn =
   <div v-else class="flex flex-wrap items-start gap-4 sm:gap-6">
     <section aria-label="ปฏิทิน" class="flex min-w-0 flex-[999_1_100%] flex-col gap-3 sm:flex-[3_1_560px]">
       <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
-        <h2 class="m-0 text-[24px] leading-normal font-bold whitespace-nowrap sm:text-[28px]">{{ heading }}</h2>
+        <h2 aria-live="polite" class="m-0 text-[24px] leading-normal font-bold whitespace-nowrap sm:text-[28px]">
+          {{ heading }}
+        </h2>
         <div class="flex items-center gap-1.5 sm:gap-2">
           <button
             type="button"
@@ -148,6 +151,7 @@ const navBtn =
               !c.inMonth && c.iso !== selected && 'border-[#8a8780]',
             ]"
             :aria-pressed="c.iso === selected"
+            :aria-current="c.iso === today ? 'date' : undefined"
             :aria-label="countLabel(c.iso)"
             :data-day="c.iso"
             :tabindex="c.iso === focusIso ? 0 : -1"
@@ -198,7 +202,7 @@ const navBtn =
       </template>
 
       <!-- mobile: week strip -->
-      <div v-else role="group" aria-label="เลือกวัน" class="grid grid-cols-7 gap-1.25">
+      <div v-else role="group" aria-label="เลือกวัน" class="grid grid-cols-7 gap-0.5 min-[380px]:gap-1.25">
         <button
           v-for="iso in week"
           :key="iso"
@@ -206,6 +210,7 @@ const navBtn =
           class="box-border flex h-19 min-w-0 flex-col items-center justify-between rounded-xl border-2 py-1.5"
           :class="iso === selected ? 'bg-sel shadow-brutal-sm' : 'bg-white'"
           :aria-pressed="iso === selected"
+          :aria-current="iso === today ? 'date' : undefined"
           :aria-label="countLabel(iso)"
           @click="pickWeekDay(iso)"
         >

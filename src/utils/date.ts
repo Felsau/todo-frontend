@@ -77,6 +77,21 @@ export function fullShortDate(iso: string): string {
   return fShortYear.format(parseISO(iso))
 }
 
+const fMonthShort = new Intl.DateTimeFormat('th-TH', { month: 'short' })
+const fMonthShortYear = new Intl.DateTimeFormat('th-TH', { month: 'short', year: 'numeric' })
+
+/**
+ * Heading for the week strip: "พฤศจิกายน 2569", or both months when the week spans two,
+ * "พ.ย. ถึง ธ.ค. 2569" and "ธ.ค. 2569 ถึง ม.ค. 2570" (QA round 2, R2-15).
+ */
+export function weekLabel(startIso: string): string {
+  const a = parseISO(startIso)
+  const b = parseISO(addDays(startIso, 6))
+  if (a.getMonth() === b.getMonth()) return monthLabel(startIso)
+  if (a.getFullYear() === b.getFullYear()) return `${fMonthShort.format(a)} ถึง ${fMonthShortYear.format(b)}`
+  return `${fMonthShortYear.format(a)} ถึง ${fMonthShortYear.format(b)}`
+}
+
 /** "พฤศจิกายน 2569" */
 export function monthLabel(iso: string): string {
   return fMonthYear.format(parseISO(iso))
@@ -129,13 +144,13 @@ export function dueOptions(todayISO: string): { value: string; label: string }[]
     { value: todayISO, label: 'วันนี้' },
     { value: addDays(todayISO, 1), label: 'พรุ่งนี้' },
     { value: addDays(todayISO, 7), label: 'อีก 7 วัน' },
-    { value: '', label: 'ไม่มีกำหนด' },
+    { value: '', label: 'ไม่มีกำหนดส่ง' },
   ]
 }
 
 /** Text for a due chip: the quick-option label when it matches, otherwise the date. */
 export function dueChipText(value: string, todayISO: string): string {
-  if (!value) return 'ไม่มีกำหนด'
+  if (!value) return 'ไม่มีกำหนดส่ง'
   const hit = dueOptions(todayISO).find((o) => o.value === value)
   return hit ? hit.label : shortDate(value)
 }

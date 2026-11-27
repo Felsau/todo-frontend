@@ -14,6 +14,7 @@ const PATHS = {
   list: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
   wifiOff: 'M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0M12 19h.01M3 3l18 18',
   spinner: 'M12 3a9 9 0 1 0 9 9',
+  arrowUp: 'M12 19V5M5 12l7-7 7 7',
 } as const
 
 export type IconName = keyof typeof PATHS

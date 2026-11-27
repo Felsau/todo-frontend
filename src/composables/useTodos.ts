@@ -1,7 +1,9 @@
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
 import { ApiError, todosApi } from '../api/todos'
 import type { Priority, Todo, TodoPatch } from '../types'
 import { isOverdue, today } from '../utils/date'
+import { cardOf, flash, focusCard, focusHome, isOnScreen, neighbourOf, revealCard } from '../utils/reveal'
+import { isBlank } from '../utils/text'
 
 /*
  * Shared todo store (module singleton, so the list, the calendar and the
@@ -12,7 +14,9 @@ import { isOverdue, today } from '../utils/date'
  */
 
 export type LoadStatus = 'loading' | 'ready' | 'error'
-export type ToastKind = 'undo' | 'saved' | 'error'
+/** Why the first load failed: this device has no internet, or the server did not answer. */
+export type LoadError = 'offline' | 'failed'
+export type ToastKind = 'undo' | 'added' | 'saved' | 'error'
 
 export interface Toast {
   id: number
@@ -20,18 +24,25 @@ export interface Toast {
   message: string
   actionLabel?: string
   onAction?: () => void
+  /** Move keyboard focus to the action button when the toast appears. */
+  autofocus?: boolean
+  /** Where keyboard focus goes when the toast lets go of it (Tab, Esc, timeout). */
+  returnFocus?: () => void
 }
 
-const TOAST_MS: Record<ToastKind, number> = { undo: 5000, saved: 2500, error: 6000 }
+const TOAST_MS: Record<ToastKind, number> = { undo: 5000, added: 4000, saved: 2500, error: 6000 }
 const SETTLE_MS = 800
 const BUSY_MS = 300
 const WAKE_AFTER_MS = 3000
 /** While the host wakes it may refuse or answer 502 to 504; keep retrying this long. */
 const WAKE_GIVE_UP_MS = 120_000
 const WAKE_RETRY_MS = 3000
+/** A refresh when the tab comes back runs at most this often. */
+const REFRESH_GAP_MS = 5000
 
 const todos = ref<Todo[]>([])
 const status = ref<LoadStatus>('loading')
+const loadError = ref<LoadError>('failed')
 /**
  * Seconds the first load has been waiting, once it passes WAKE_AFTER_MS (else 0).
  * The API runs on a free host that sleeps when idle and takes about a minute to wake,
@@ -39,6 +50,9 @@ const status = ref<LoadStatus>('loading')
  */
 const waitedSec = ref(0)
 const toast = ref<Toast | null>(null)
+/** What screen readers hear: polite news and urgent errors (two live regions in ToastHost). */
+const liveMessage = ref('')
+const alertMessage = ref('')
 
 /** id -> the "done" value to show while a ticked card settles in place. */
 const settling = reactive<Record<number, boolean>>({})
@@ -50,28 +64,80 @@ const locked = reactive<Record<number, boolean>>({})
 let toastSeq = 0
 let tempSeq = 0
 let toastTimer: ReturnType<typeof setTimeout> | undefined
+let toastHeld = false
 const settleTimers = new Map<number, ReturnType<typeof setTimeout>>()
 const chains = new Map<number, Promise<unknown>>()
+/** The id the server gave a row that was created under a temporary id. */
+const realIds = new Map<number, number>()
+let bulkInFlight = false
+let lastRefresh = 0
+
+interface Removal {
+  todo: Todo
+  index: number
+  request: Promise<void>
+}
+/** Deletions that one "เลิกทำ" brings back: quick deletes in a row share one toast (R2-06). */
+let undoBatch: Removal[] = []
 
 /* ---------- toasts: one slot, newest replaces the old one ---------- */
 
-function showToast(kind: ToastKind, message: string, extra: Pick<Toast, 'actionLabel' | 'onAction'> = {}) {
+let flip = false
+let sayTimer: ReturnType<typeof setTimeout> | undefined
+/**
+ * Puts text in a live region. A zero width space makes a repeated message count as new.
+ * The text is cleared after a while, so nobody reading the page later meets a stale message.
+ */
+function say(text: string, urgent = false) {
+  flip = !flip
+  const value = flip ? text : `${text}\u200B`
+  if (urgent) alertMessage.value = value
+  else liveMessage.value = value
+  clearTimeout(sayTimer)
+  sayTimer = setTimeout(() => {
+    liveMessage.value = ''
+    alertMessage.value = ''
+  }, 7000)
+}
+
+function armTimer() {
   clearTimeout(toastTimer)
-  const id = ++toastSeq
-  toast.value = { id, kind, message, ...extra }
+  const t = toast.value
+  if (!t || toastHeld) return
   toastTimer = setTimeout(() => {
-    if (toast.value?.id === id) toast.value = null
-  }, TOAST_MS[kind])
+    if (toast.value?.id === t.id) dismissToast()
+  }, TOAST_MS[t.kind])
+}
+
+function showToast(
+  kind: ToastKind,
+  message: string,
+  extra: Pick<Toast, 'actionLabel' | 'onAction' | 'autofocus' | 'returnFocus'> = {},
+) {
+  if (kind !== 'undo') undoBatch = []
+  toastHeld = false
+  toast.value = { id: ++toastSeq, kind, message, ...extra }
+  say(message, kind === 'error')
+  armTimer()
 }
 
 function dismissToast() {
   clearTimeout(toastTimer)
+  toastHeld = false
   toast.value = null
+  undoBatch = []
+}
+
+/** While the pointer or keyboard focus is on the toast it stays put (WCAG 2.2.1). */
+function holdToast(on: boolean) {
+  toastHeld = on
+  if (on) clearTimeout(toastTimer)
+  else armTimer()
 }
 
 const MSG = {
   toggle: 'บันทึกไม่สำเร็จ เราย้อนกลับให้แล้ว ลองอีกครั้งนะ',
-  add: 'เพิ่มงานไม่สำเร็จ ลองอีกครั้งนะ',
+  addKept: 'เพิ่มงานไม่สำเร็จ ข้อความยังอยู่ในช่องพิมพ์ ลองกดเพิ่มอีกครั้งนะ',
   remove: 'ลบไม่สำเร็จ เรากู้งานกลับมาให้แล้ว ลองอีกครั้งนะ',
   undo: 'กู้งานกลับมาไม่สำเร็จ ลองอีกครั้งนะ',
   clear: 'ลบงานที่เสร็จแล้วไม่สำเร็จ เรากู้งานกลับมาให้แล้ว ลองอีกครั้งนะ',
@@ -140,6 +206,11 @@ function swapRow(tempId: number, row: Todo) {
   else todos.value.push(row)
 }
 
+/** True while something is on its way to the server, so a refresh must not overwrite it. */
+function inFlight(): boolean {
+  return bulkInFlight || chains.size > 0 || Object.keys(locked).length > 0 || Object.keys(settling).length > 0
+}
+
 /* ---------- actions ---------- */
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -155,6 +226,8 @@ async function load() {
   }, 250)
   try {
     for (;;) {
+      // No internet on this device: say so at once instead of waiting for the server (R2-21).
+      if (!navigator.onLine) throw new ApiError(0, [], 'offline')
       try {
         todos.value = await todosApi.list()
         status.value = 'ready'
@@ -165,6 +238,7 @@ async function load() {
       }
     }
   } catch {
+    loadError.value = navigator.onLine ? 'failed' : 'offline'
     status.value = 'error'
   } finally {
     clearInterval(tick)
@@ -172,9 +246,28 @@ async function load() {
   }
 }
 
-function add(input: { title: string; priority: Priority; due_date: string | null }) {
+/** Picks up changes made in another tab or on another device (R2-08). Skips while anything is in flight. */
+async function refresh() {
+  if (status.value !== 'ready' || inFlight() || Date.now() - lastRefresh < REFRESH_GAP_MS) return
+  lastRefresh = Date.now()
+  try {
+    const rows = await todosApi.list()
+    if (!inFlight()) todos.value = rows
+  } catch {
+    // Keep what is on screen; the next action reports any real problem.
+  }
+}
+
+interface AddOptions {
+  /** Put the typed values back into the form after a failure; false when the form is in use again. */
+  restore?: () => boolean
+  /** Shows the new card when the person asks to see it (default: scroll to it). */
+  reveal?: (id: number) => void
+}
+
+function add(input: { title: string; priority: Priority; due_date: string | null }, opts: AddOptions = {}) {
   const title = input.title.trim()
-  if (!title) return
+  if (isBlank(title)) return
   const tempId = --tempSeq
   const stamp = new Date().toISOString()
   todos.value.push({
@@ -188,16 +281,46 @@ function add(input: { title: string; priority: Priority; due_date: string | null
     updated_at: stamp,
   })
   locked[tempId] = true
+  void nextTick(() => announceAdded(tempId, title, opts.reveal))
   todosApi
     .create({ title, priority: input.priority, due_date: input.due_date })
-    .then((row) => swapRow(tempId, row))
+    .then((row) => {
+      realIds.set(tempId, row.id)
+      swapRow(tempId, row)
+    })
     .catch(() => {
       const i = indexOf(tempId)
       if (i >= 0) todos.value.splice(i, 1)
-      showToast('error', MSG.add)
+      // Keep what the person typed (R2-05): back into the form, or a retry button.
+      if (opts.restore?.()) showToast('error', MSG.addKept)
+      else
+        showToast('error', `เพิ่ม “${title}” ไม่สำเร็จ`, {
+          actionLabel: 'ลองใหม่',
+          onAction: () => add(input, opts),
+        })
     })
     .finally(() => {
       delete locked[tempId]
+    })
+}
+
+/** Tells the person the task was added, and where it went when it is off screen (R2-02). */
+function announceAdded(tempId: number, title: string, reveal?: (id: number) => void) {
+  if (indexOf(tempId) < 0 && !realIds.has(tempId)) return // already failed and taken out
+  const message = `เพิ่ม “${title}” แล้ว`
+  const el = cardOf(tempId)
+  const visible = !!el && isOnScreen(el)
+  if (el && visible) flash(el)
+  if (toast.value?.kind === 'undo') {
+    // Do not push away the chance to undo a delete; screen readers still hear it.
+    say(message)
+    return
+  }
+  if (visible) showToast('added', message)
+  else
+    showToast('added', message, {
+      actionLabel: 'ดูงาน',
+      onAction: () => (reveal ?? revealCard)(realIds.get(tempId) ?? tempId),
     })
 }
 
@@ -228,15 +351,27 @@ function toggle(id: number) {
     })
 }
 
-interface Removal {
-  todo: Todo
-  index: number
-  request: Promise<void>
+/** One undo toast for this deletion, joined with any deletions whose toast is still showing. */
+function offerUndo(removals: Removal[], keyboard: boolean, returnFocus: () => void) {
+  const batch = toast.value?.kind === 'undo' ? [...undoBatch, ...removals] : [...removals]
+  const message = batch.length === 1 ? `ลบ “${batch[0].todo.title}” แล้ว` : `ลบแล้ว ${batch.length} งาน`
+  showToast('undo', message, {
+    actionLabel: 'เลิกทำ',
+    onAction: () => void undoAll(batch),
+    autofocus: keyboard,
+    returnFocus,
+  })
+  undoBatch = batch
 }
 
-function remove(id: number) {
+/**
+ * Deletes at once and offers undo. Keyboard focus moves to "เลิกทำ" when the delete came from
+ * the keyboard, otherwise to the card that took its place, never to the page body (R2-04).
+ */
+function remove(id: number, opts: { keyboard?: boolean } = {}) {
   const index = indexOf(id)
   if (index < 0 || locked[id]) return
+  const next = neighbourOf(id)
   const todo = { ...todos.value[index] }
   todos.value.splice(index, 1)
   delete settling[id]
@@ -245,12 +380,11 @@ function remove(id: number) {
     if (err instanceof ApiError && err.isNotFound) return // already gone, that is fine
     throw err
   })
-  const removal: Removal = { todo, index, request }
-
-  showToast('undo', `ลบ “${todo.title}” แล้ว`, {
-    actionLabel: 'เลิกทำ',
-    onAction: () => undoRemove(removal),
-  })
+  const returnFocus = (scroll = true) => {
+    if (next === null || !focusCard(next, scroll)) focusHome()
+  }
+  offerUndo([{ todo, index, request }], !!opts.keyboard, returnFocus)
+  if (!opts.keyboard) void nextTick(() => returnFocus(false))
 
   request.catch(() => {
     // The DELETE failed: bring the card back and tell the user.
@@ -259,8 +393,20 @@ function remove(id: number) {
   })
 }
 
-async function undoRemove({ todo, index, request }: Removal) {
-  dismissToast()
+async function undoAll(batch: Removal[]) {
+  undoBatch = []
+  // Put cards back in the reverse order they were taken out, so every index is right.
+  const ids = await Promise.all([...batch].reverse().map((r) => undoRemove(r)))
+  const first = ids.reverse().find((x): x is number => x !== null)
+  const lost = !document.activeElement || document.activeElement === document.body
+  if (first !== undefined && lost) {
+    await nextTick()
+    focusCard(first)
+  }
+}
+
+/** Brings one deleted todo back. Returns its new id, or null when it could not. */
+async function undoRemove({ todo, index, request }: Removal): Promise<number | null> {
   const tempId = --tempSeq
   todos.value.splice(Math.min(index, todos.value.length), 0, { ...todo, id: tempId })
   locked[tempId] = true // the card's actions stay off until the POST returns
@@ -273,7 +419,7 @@ async function undoRemove({ todo, index, request }: Removal) {
       // The delete itself failed and already restored the original card.
       const i = indexOf(tempId)
       if (i >= 0) todos.value.splice(i, 1)
-      return
+      return null
     }
     const row = await todosApi.create({
       title: todo.title,
@@ -283,23 +429,42 @@ async function undoRemove({ todo, index, request }: Removal) {
       notes: todo.notes,
     })
     swapRow(tempId, row)
+    return row.id
   } catch {
     const i = indexOf(tempId)
     if (i >= 0) todos.value.splice(i, 1)
     showToast('error', MSG.undo)
+    return null
   } finally {
     delete locked[tempId]
   }
 }
 
-async function clearCompleted() {
+/** Deletes every done todo, with the same undo as a single delete (R2-20). */
+async function clearCompleted(opts: { keyboard?: boolean } = {}) {
   const removed = todos.value.filter((t) => t.is_completed && t.id > 0)
   if (removed.length === 0) return
+  const places = removed.map((t) => ({ todo: { ...t }, index: indexOf(t.id) }))
   const ids = new Set(removed.map((t) => t.id))
   todos.value = todos.value.filter((t) => !ids.has(t.id))
-  try {
+  bulkInFlight = true
+  const request = (async () => {
     await Promise.allSettled([...chains.values()]) // let pending ticks reach the API first
     await todosApi.removeCompleted()
+  })()
+  request
+    .finally(() => {
+      bulkInFlight = false
+    })
+    .catch(() => undefined)
+  offerUndo(
+    places.map((p) => ({ ...p, request })),
+    !!opts.keyboard,
+    focusHome,
+  )
+  if (!opts.keyboard) void nextTick(focusHome)
+  try {
+    await request
   } catch {
     todos.value = [...todos.value, ...removed].sort((a, b) => a.id - b.id)
     showToast('error', MSG.clear)
@@ -314,6 +479,12 @@ async function saveDetail(id: number, patch: TodoPatch): Promise<Todo> {
   return row
 }
 
+/** Drops a card the server no longer has (deleted in another tab or on another device). */
+function forget(id: number) {
+  const i = indexOf(id)
+  if (i >= 0) todos.value.splice(i, 1)
+}
+
 /* ---------- derived ---------- */
 
 const total = computed(() => todos.value.length)
@@ -326,8 +497,11 @@ export function useTodos() {
   return {
     todos,
     status,
+    loadError,
     waitedSec,
     toast,
+    liveMessage,
+    alertMessage,
     settling,
     busy,
     locked,
@@ -336,12 +510,16 @@ export function useTodos() {
     overdueCount,
     effDone,
     load,
+    refresh,
     add,
     toggle,
     remove,
     clearCompleted,
     saveDetail,
+    forget,
     showToast,
     dismissToast,
+    holdToast,
+    say,
   }
 }

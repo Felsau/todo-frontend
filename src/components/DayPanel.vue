@@ -6,6 +6,7 @@ import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_HEX, PRIORITY_LABEL, type Priority, type Todo } from '../types'
 import { dayMonthLong, diffDays, isOverdue, shortDate, today, weekdayName } from '../utils/date'
+import { isBlank } from '../utils/text'
 import AnchoredPicker from './AnchoredPicker.vue'
 import Icon from './Icon.vue'
 import PriorityPicker from './PriorityPicker.vue'
@@ -59,15 +60,28 @@ const input = ref<HTMLInputElement | null>(null)
 
 function submit() {
   const t = draft.value.trim()
-  if (!t) return
-  add({ title: t, priority: priority.value, due_date: props.selected })
+  if (isBlank(t)) return
+  const sent = { title: t, priority: priority.value }
+  add(
+    { title: t, priority: sent.priority, due_date: props.selected },
+    {
+      // A failed add puts the typed values back, unless the box is already in use again (R2-05).
+      restore: () => {
+        if (draft.value.trim() !== '') return false
+        draft.value = sent.title
+        priority.value = sent.priority
+        return true
+      },
+    },
+  )
   draft.value = ''
   priority.value = 'normal' // reset after every add, like the list view
   input.value?.focus()
 }
 
 const overdue = (t: Todo) => isOverdue(t.due_date, t.is_completed, today.value)
-const toggleLabel = (t: Todo) => `${t.is_completed ? 'ยกเลิกเสร็จ' : 'ทำเครื่องหมายว่าเสร็จ'}: ${t.title}`
+/** A toggle keeps one name; aria-pressed tells whether the task is done. */
+const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่าเสร็จ: ${t.title}`
 </script>
 
 <template>
@@ -90,12 +104,12 @@ const toggleLabel = (t: Todo) => `${t.is_completed ? 'ยกเลิกเส�
           maxlength="200"
           autocomplete="off"
           :placeholder="`เพิ่มงานวันที่ ${nice}`"
-          class="field box-border h-12 min-w-0 flex-1 text-[15px] shadow-brutal-sm sm:h-11 sm:rounded-[10px] sm:px-3 sm:text-[14px] sm:shadow-none"
+          class="field box-border h-12 min-w-0 flex-1 text-[16px] shadow-brutal-sm sm:h-11 sm:rounded-[10px] sm:px-3 sm:text-[14px] sm:shadow-none"
         />
         <button
           type="submit"
           class="btn-primary h-12 px-4 sm:h-11 sm:rounded-[10px] sm:px-3.5 sm:shadow-none"
-          :disabled="!draft.trim()"
+          :disabled="isBlank(draft)"
         >
           เพิ่ม +
         </button>
@@ -113,6 +127,7 @@ const toggleLabel = (t: Todo) => `${t.is_completed ? 'ยกเลิกเส�
               type="button"
               class="box-border inline-flex h-11 items-center gap-2 rounded-xl border-2 bg-white px-3 text-[13px] font-semibold"
               v-bind="triggerProps"
+              :aria-label="`ความสำคัญ: ${PRIORITY_LABEL[priority]}`"
             >
               <span
                 aria-hidden="true"
@@ -134,6 +149,7 @@ const toggleLabel = (t: Todo) => `${t.is_completed ? 'ยกเลิกเส�
       <li
         v-for="t in dayTasks"
         :key="t.id"
+        :data-todo-id="t.id"
         class="box-border flex min-h-15.5 items-center gap-1.5 rounded-[14px] border-2 p-1.5 motion-safe:transition motion-safe:duration-100 sm:min-h-14.5 sm:gap-2 sm:rounded-xl"
         :class="
           t.is_completed
@@ -197,7 +213,7 @@ const toggleLabel = (t: Todo) => `${t.is_completed ? 'ยกเลิกเส�
           class="icon-btn"
           :aria-label="`ลบ: ${t.title}`"
           :disabled="locked[t.id]"
-          @click="remove(t.id)"
+          @click="remove(t.id, { keyboard: $event.detail === 0 })"
         >
           <Icon name="trash" :size="18" />
         </button>

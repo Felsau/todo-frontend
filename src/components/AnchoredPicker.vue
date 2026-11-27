@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, toRef } from 'vue'
 import { focusables, trapTab, useScrollLock } from '../composables/useFocus'
+import { useHistoryModal } from '../composables/useHistoryModal'
 import { useIsSm } from '../composables/useMedia'
 
 /*
@@ -18,6 +19,9 @@ const panel = ref<HTMLElement | null>(null)
 const isSm = useIsSm()
 
 useScrollLock(toRef(() => open.value && !isSm.value))
+
+// On phones the sheet owns a history entry, so the Back button closes it (R2-01).
+useHistoryModal({ key: 'sheet', open: toRef(() => open.value && !isSm.value), onBack: () => close() })
 
 function trigger(): HTMLElement | null {
   return root.value?.querySelector<HTMLElement>('[data-picker-trigger]') ?? null
@@ -92,7 +96,7 @@ const triggerProps = () => ({
         <button
           type="button"
           tabindex="-1"
-          aria-label="ปิด"
+          aria-hidden="true"
           class="absolute inset-0 size-full cursor-default border-0 bg-ink/45 p-0"
           @click="close()"
         />

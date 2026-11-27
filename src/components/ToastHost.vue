@@ -1,32 +1,115 @@
 <script setup lang="ts">
-import { useTodos } from '../composables/useTodos'
+import { computed, nextTick, ref, watch } from 'vue'
+import { useDetail } from '../composables/useDetail'
+import { useTodos, type Toast } from '../composables/useTodos'
+import { focusHome } from '../utils/reveal'
 import Icon from './Icon.vue'
 
-/* One toast slot, bottom centre. The newest toast replaces the old one. */
-const { toast, dismissToast } = useTodos()
+/*
+ * One toast slot. The newest toast replaces the old one.
+ * While the task detail is open the toast sits at the top, so it never covers the dialog's
+ * buttons (QA round 2, R2-07). It stays while the pointer or keyboard focus is on it.
+ * Screen readers hear every toast through two live regions that never leave the page.
+ */
+const { toast, liveMessage, alertMessage, dismissToast, holdToast } = useTodos()
+const { detailId } = useDetail()
+
+const box = ref<HTMLElement | null>(null)
+const actionBtn = ref<HTMLButtonElement | null>(null)
+const atTop = computed(() => detailId.value !== null)
+
+/** The toast whose action was just used: its action decides where focus goes next. */
+let actedId: number | null = null
 
 function act() {
-  const fn = toast.value?.onAction
+  const t = toast.value
+  if (!t) return
+  actedId = t.id
   dismissToast()
-  fn?.()
+  t.onAction?.()
+}
+
+function letGo(t: Toast | null | undefined) {
+  if (t?.returnFocus) t.returnFocus()
+  else focusHome()
+}
+
+// Focus: into the action when asked, and back to the page when the toast goes away while holding it.
+watch(
+  toast,
+  async (now, before) => {
+    const hadFocus = !!box.value && box.value.contains(document.activeElement)
+    await nextTick()
+    if (now && now.id !== before?.id && now.autofocus) {
+      actionBtn.value?.focus()
+      return
+    }
+    if (hadFocus && before && before.id !== now?.id && before.id !== actedId) letGo(before)
+  },
+  { flush: 'pre' },
+)
+
+const hovered = ref(false)
+const focused = ref(false)
+watch([hovered, focused], ([h, f]) => holdToast(h || f))
+watch(
+  () => toast.value?.id,
+  () => {
+    hovered.value = false
+    focused.value = false
+  },
+)
+
+function onFocusOut(e: FocusEvent) {
+  if (!box.value?.contains(e.relatedTarget as Node | null)) focused.value = false
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    const t = toast.value
+    actedId = t?.id ?? null
+    dismissToast()
+    letGo(t)
+  } else if (e.key === 'Tab') {
+    // Leaving the toast goes back to where you were working, not out of the page.
+    e.preventDefault()
+    letGo(toast.value)
+  }
 }
 </script>
 
 <template>
-  <div class="pointer-events-none fixed inset-x-5 bottom-5 z-60 flex justify-center sm:inset-x-6 sm:bottom-7">
+  <div class="sr-only" role="status" aria-live="polite">{{ liveMessage }}</div>
+  <div class="sr-only" role="alert">{{ alertMessage }}</div>
+
+  <div
+    class="pointer-events-none fixed inset-x-5 z-60 flex justify-center sm:inset-x-6"
+    :class="atTop ? 'top-5' : 'bottom-5 sm:bottom-7'"
+  >
     <div
       v-if="toast"
+      ref="box"
       :key="toast.id"
-      :role="toast.kind === 'error' ? 'alert' : 'status'"
+      data-toast
       class="pointer-events-auto box-border flex max-w-full min-w-0 items-center gap-3 rounded-[14px] border-2 py-1.5 pr-1.5 pl-4 text-[14px] leading-normal font-semibold text-white max-sm:w-full sm:gap-4 sm:pl-4.5"
       :class="toast.kind === 'error' ? 'bg-danger shadow-brutal-sm' : 'bg-ink shadow-brutal-accent'"
+      @mouseenter="hovered = true"
+      @mouseleave="hovered = false"
+      @focusin="focused = true"
+      @focusout="onFocusOut"
+      @keydown="onKeydown"
     >
-      <Icon v-if="toast.kind === 'saved'" name="check" :size="16" :stroke="3" />
-      <span class="min-w-0 flex-1 wrap-anywhere" :class="toast.kind === 'saved' && 'pr-3'">{{ toast.message }}</span>
+      <Icon v-if="toast.kind === 'saved' || toast.kind === 'added'" name="check" :size="16" :stroke="3" />
+      <span class="min-w-0 flex-1 wrap-anywhere" :class="!toast.actionLabel && toast.kind !== 'error' && 'pr-3'">
+        {{ toast.message }}
+      </span>
       <button
-        v-if="toast.kind === 'undo'"
+        v-if="toast.actionLabel"
+        ref="actionBtn"
         type="button"
-        class="h-11 flex-none rounded-[10px] border-2 border-white bg-accent px-3.5 text-[14px] font-semibold text-ink"
+        class="h-11 flex-none rounded-[10px] border-2 px-3.5 text-[14px] font-semibold"
+        :class="toast.kind === 'error' ? 'border-white bg-white text-danger' : 'border-white bg-accent text-ink'"
         @click="act"
       >
         {{ toast.actionLabel }}

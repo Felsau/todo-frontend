@@ -12,7 +12,7 @@ const searchOpen = ref(false)
 
 export const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'all', label: 'ทั้งหมด' },
-  { key: 'active', label: 'ค้างอยู่' },
+  { key: 'active', label: 'ยังไม่เสร็จ' },
   { key: 'done', label: 'เสร็จแล้ว' },
   { key: 'overdue', label: 'เลยกำหนด' },
 ]

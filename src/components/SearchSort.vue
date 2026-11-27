@@ -22,20 +22,28 @@ const sortId = useId()
         type="search"
         autocomplete="off"
         placeholder="ค้นหา..."
-        class="box-border h-11 w-full rounded-full border-2 bg-white pr-3.5 pl-10 text-[14px] font-semibold"
+        data-search-input
+        class="box-border h-11 w-full rounded-full border-2 bg-white pr-3.5 pl-10 text-[16px] font-semibold sm:text-[14px]"
       />
     </div>
     <div class="flex items-center gap-2">
       <label :for="sortId" class="label">เรียง</label>
-      <select
-        :id="sortId"
-        :value="sort"
-        class="box-border h-11 rounded-full border-2 bg-white px-3.5 text-[14px] font-semibold"
-        :class="compact ? 'min-w-0 flex-1' : 'min-w-37.5'"
-        @change="sort = ($event.target as HTMLSelectElement).value as SortKey"
-      >
-        <option v-for="s in SORTS" :key="s.key" :value="s.key">{{ s.label }}</option>
-      </select>
+      <div class="relative" :class="compact ? 'min-w-0 flex-1' : 'min-w-37.5'">
+        <select
+          :id="sortId"
+          :value="sort"
+          class="box-border h-11 w-full appearance-none rounded-full border-2 bg-white pr-9 pl-3.5 text-[16px] font-semibold sm:text-[14px]"
+          @change="sort = ($event.target as HTMLSelectElement).value as SortKey"
+        >
+          <option v-for="s in SORTS" :key="s.key" :value="s.key">{{ s.label }}</option>
+        </select>
+        <Icon
+          name="chevronDown"
+          :size="14"
+          :stroke="3"
+          class="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2"
+        />
+      </div>
     </div>
   </div>
 </template>

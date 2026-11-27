@@ -25,7 +25,7 @@ const { filter, counts } = useListUi()
           class="box-border flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[12px] font-semibold sm:px-1.75"
           :class="
             f.key === 'overdue' && counts.overdue > 0
-              ? 'bg-danger text-white sm:bg-paper sm:text-ink'
+              ? 'bg-danger text-white lg:bg-paper lg:text-ink'
               : filter === f.key
                 ? 'bg-accent text-ink'
                 : 'bg-paper text-ink'
