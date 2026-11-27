@@ -2,6 +2,8 @@
 
 หน้าเว็บของแอป Todo List ชื่อ "ลุยงาน!" ทำด้วย Vue.js 3 และ TypeScript ดีไซน์แบบ neo-brutalist ทุกการกระทำส่งคำขอไปที่ [todo-api](../todo-api) ทันที และรีเฟรชหน้าแล้วรายการยังอยู่ เพราะดึงจาก API ทุกครั้งที่เปิดหน้า
 
+ลองใช้งานได้ที่ https://todo-frontend-xuka.onrender.com APIใช้แพ็กเกจฟรีของ Render ซึ่งจะหลับเมื่อไม่มีคนใช้ 15 นาที การเปิดครั้งแรกหลังจากนั้นจึงอาจช้าราว 1 นาที
+
 ## ฟีเจอร์
 
 มุมมองรายการให้เพิ่มงานจากช่องพิมพ์ด้านบน เลือกกำหนดส่งและความสำคัญจากชิปสรุปสองอัน ติ๊กว่าเสร็จ แก้ไข ลบ และเลิกทำการลบภายใน 5 วินาที มีตัวกรอง ทั้งหมด ค้างอยู่ เสร็จแล้ว เลยกำหนด พร้อมจำนวน ค้นหาจากชื่อ เรียงตามกำหนดส่ง ความสำคัญ หรือเพิ่มล่าสุด และงานที่เสร็จแล้วจะอยู่ท้ายรายการเสมอ ปุ่มล้างรายการที่เสร็จแล้วมีขั้นตอนยืนยันในบรรทัดเดียวกัน
@@ -31,6 +33,10 @@ npm run dev            # เปิดที่ http://localhost:5173
 ## Environment Variables
 
 `VITE_API_URL` คือ URL ของ RESTful API Server ค่าตัวอย่างคือ `http://localhost:3333` และ API อนุญาต CORS ให้ origin `http://localhost:5173`
+
+## Deploy
+
+หน้าเว็บอยู่บน Render แบบ Static Site คำสั่ง build คือ `npm ci && npm run build` โฟลเดอร์ที่เผยแพร่คือ `dist` และตั้ง `VITE_API_URL=https://todo-api-g7v9.onrender.com` ไว้ตอน build เพราะ router ใช้ history mode จึงตั้งกฎ rewrite ให้ทุก path (`/*`) ส่ง `/index.html` เพื่อให้เปิด `/calendar` ตรงๆ หรือรีเฟรชหน้านั้นได้
 
 ## โครงสร้างโปรเจกต์
 
@@ -109,3 +115,9 @@ src/
 ![คำขอที่ส่งไปยัง API](docs/screenshots/06-22-network-requests-per-action.png)
 
 ![npm run build](docs/screenshots/06-23-npm-run-build.png)
+
+เว็บที่ deploy แล้ว ทดสอบเพิ่มงานผ่านหน้าเว็บจริงบนจอใหญ่ และหน้ารายการบนมือถือ
+
+![เว็บจริงบนจอใหญ่](docs/screenshots/09-01-live-add-desktop.png)
+
+![เว็บจริงบนมือถือ](docs/screenshots/09-02-live-list-mobile.png)
