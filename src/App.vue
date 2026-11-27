@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import AppHeader from './components/AppHeader.vue'
+import DetailDialog from './components/DetailDialog.vue'
 import ToastHost from './components/ToastHost.vue'
 import { useTodos } from './composables/useTodos'
 
@@ -17,5 +18,6 @@ onMounted(() => {
       <RouterView />
     </main>
   </div>
+  <DetailDialog />
   <ToastHost />
 </template>
