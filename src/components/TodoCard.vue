@@ -75,7 +75,7 @@ const toggleLabel = () =>
     <button
       type="button"
       tabindex="-1"
-      class="flex flex-1 cursor-pointer flex-col gap-3 border-0 bg-transparent px-1 py-0 text-left disabled:cursor-not-allowed"
+      class="flex min-h-11 flex-1 cursor-pointer flex-col gap-3 border-0 bg-transparent px-1 py-0 text-left disabled:cursor-not-allowed"
       :disabled="locked[todo.id]"
       @click="openDetail(todo.id)"
     >

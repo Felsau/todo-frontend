@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import DayPanel from '../components/DayPanel.vue'
 import Icon from '../components/Icon.vue'
 import ListSkeleton from '../components/ListSkeleton.vue'
@@ -47,6 +47,21 @@ const cells = computed<Cell[]>(() => {
   }
   return out
 })
+
+/** Roving tabindex: one tab stop in the grid, arrow keys move between days. */
+const focusIso = computed(() =>
+  cells.value.some((c) => c.iso === selected.value) ? selected.value : (cells.value.find((c) => c.inMonth)?.iso ?? ''),
+)
+
+async function onCellKey(e: KeyboardEvent, c: Cell) {
+  const step = ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 } as Record<string, number>)[e.key]
+  if (step === undefined) return
+  e.preventDefault()
+  const iso = addDays(c.iso, step)
+  pickCell({ iso, num: 0, inMonth: true })
+  await nextTick()
+  document.querySelector<HTMLElement>(`[data-day="${iso}"]`)?.focus()
+}
 
 function shiftMonth(n: number) {
   const d = parseISO(monthStart.value)
@@ -134,7 +149,10 @@ const navBtn =
             ]"
             :aria-pressed="c.iso === selected"
             :aria-label="countLabel(c.iso)"
+            :data-day="c.iso"
+            :tabindex="c.iso === focusIso ? 0 : -1"
             @click="pickCell(c)"
+            @keydown="onCellKey($event, c)"
           >
             <span
               class="box-border flex h-6.5 min-w-6.5 items-center justify-center self-start rounded-full border-2 px-1.5 text-[13px] font-semibold"
