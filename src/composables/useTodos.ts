@@ -25,9 +25,19 @@ export interface Toast {
 const TOAST_MS: Record<ToastKind, number> = { undo: 5000, saved: 2500, error: 6000 }
 const SETTLE_MS = 800
 const BUSY_MS = 300
+const WAKE_AFTER_MS = 3000
+/** While the host wakes it may refuse or answer 502 to 504; keep retrying this long. */
+const WAKE_GIVE_UP_MS = 120_000
+const WAKE_RETRY_MS = 3000
 
 const todos = ref<Todo[]>([])
 const status = ref<LoadStatus>('loading')
+/**
+ * Seconds the first load has been waiting, once it passes WAKE_AFTER_MS (else 0).
+ * The API runs on a free host that sleeps when idle and takes about a minute to wake,
+ * so a long first load gets its own "waking the server" message instead of a bare skeleton.
+ */
+const waitedSec = ref(0)
 const toast = ref<Toast | null>(null)
 
 /** id -> the "done" value to show while a ticked card settles in place. */
@@ -132,13 +142,33 @@ function swapRow(tempId: number, row: Todo) {
 
 /* ---------- actions ---------- */
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const isWaking = (e: unknown) => e instanceof ApiError && (e.status === 0 || (e.status >= 502 && e.status <= 504))
+
 async function load() {
   status.value = 'loading'
+  waitedSec.value = 0
+  const started = Date.now()
+  const tick = setInterval(() => {
+    const ms = Date.now() - started
+    waitedSec.value = ms >= WAKE_AFTER_MS ? Math.floor(ms / 1000) : 0
+  }, 250)
   try {
-    todos.value = await todosApi.list()
-    status.value = 'ready'
+    for (;;) {
+      try {
+        todos.value = await todosApi.list()
+        status.value = 'ready'
+        return
+      } catch (e) {
+        if (!isWaking(e) || Date.now() - started > WAKE_GIVE_UP_MS) throw e
+        await sleep(WAKE_RETRY_MS)
+      }
+    }
   } catch {
     status.value = 'error'
+  } finally {
+    clearInterval(tick)
+    waitedSec.value = 0
   }
 }
 
@@ -296,6 +326,7 @@ export function useTodos() {
   return {
     todos,
     status,
+    waitedSec,
     toast,
     settling,
     busy,
