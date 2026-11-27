@@ -49,7 +49,7 @@ const navLink =
 
     <div class="order-2 flex items-center gap-2.5 sm:order-3 sm:gap-3.5">
       <button
-        v-if="onList"
+        v-if="onList && status === 'ready'"
         type="button"
         class="icon-btn rounded-xl sm:hidden"
         :class="searchOpen && 'bg-accent'"

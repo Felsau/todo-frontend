@@ -1,31 +1,111 @@
 # Todo Frontend
 
-หน้าเว็บของแอป Todo List ทำด้วย Vue.js 3 + TypeScript ทุกการกระทำส่ง Request ไปที่ [todo-api](../todo-api)
+หน้าเว็บของแอป Todo List ชื่อ "ลุยงาน!" ทำด้วย Vue.js 3 และ TypeScript ดีไซน์แบบ neo-brutalist ทุกการกระทำส่งคำขอไปที่ [todo-api](../todo-api) ทันที และรีเฟรชหน้าแล้วรายการยังอยู่ เพราะดึงจาก API ทุกครั้งที่เปิดหน้า
 
 ## ฟีเจอร์
 
-- เพิ่มรายการ todo
-- ลบรายการ todo
-- ทำเครื่องหมายว่าเสร็จแล้ว / ยกเลิก
-- รีเฟรชหน้าแล้วรายการยังอยู่ (ดึงจาก API)
-- Responsive ทั้ง Mobile และ Desktop
+มุมมองรายการให้เพิ่มงานจากช่องพิมพ์ด้านบน เลือกกำหนดส่งและความสำคัญจากชิปสรุปสองอัน ติ๊กว่าเสร็จ แก้ไข ลบ และเลิกทำการลบภายใน 5 วินาที มีตัวกรอง ทั้งหมด ค้างอยู่ เสร็จแล้ว เลยกำหนด พร้อมจำนวน ค้นหาจากชื่อ เรียงตามกำหนดส่ง ความสำคัญ หรือเพิ่มล่าสุด และงานที่เสร็จแล้วจะอยู่ท้ายรายการเสมอ ปุ่มล้างรายการที่เสร็จแล้วมีขั้นตอนยืนยันในบรรทัดเดียวกัน
+
+หน้ารายละเอียดเปิดเป็นป๊อปอัปบนจอใหญ่และแผงเลื่อนขึ้นบนมือถือ แก้ได้ทั้งชื่อ สถานะ กำหนดส่ง ความสำคัญ และโน้ต ถ้ากดปิดตอนที่ยังไม่บันทึกจะถามว่าทิ้งการแก้ไขไหม การบันทึกส่งเฉพาะฟิลด์ที่เปลี่ยน ถ้าบันทึกไม่สำเร็จหน้าต่างจะไม่ปิดและค่าที่แก้ยังอยู่ครบ
+
+มุมมองปฏิทินเป็นรายเดือนบนจอใหญ่ และเป็นแถบสัปดาห์บนมือถือ เลือกวันแล้วดูงานของวันนั้นและเพิ่มงานลงวันนั้นได้ทันที
+
+ทุกการกระทำอัปเดตหน้าจอก่อน (optimistic) แล้วย้อนกลับพร้อมแถบแจ้งเตือนสีแดงถ้าส่งไม่สำเร็จ ไอคอนหมุนจะขึ้นในปุ่มติ๊กเมื่อรอเกิน 300 มิลลิวินาที ตอนโหลดมี skeleton และถ้าโหลดไม่ได้จะมีการ์ดพร้อมปุ่มลองใหม่ วันที่แสดงเป็นปีพุทธศักราชด้วย `Intl.DateTimeFormat('th-TH')` ส่วนการใช้งานด้วยคีย์บอร์ดรองรับทั้งหน้ารายการ ตัวเลือก หน้ารายละเอียด และปฏิทิน ปุ่มและจุดกดทุกจุดมีขนาดอย่างน้อย 44 พิกเซล
 
 ## Tech Stack
 
-- Vue.js 3 (Composition API) + TypeScript
-- Vite
-- CSS Framework: _(Tailwind / Bootstrap)_
+Vue.js 3 แบบ Composition API (`<script setup lang="ts">`) กับ TypeScript โหมด strict, Vite, Tailwind CSS v4 ผ่าน `@tailwindcss/vite` โดยกำหนดโทเคนสี เงา และฟอนต์ไว้ใน `@theme`, vue-router สองเส้นทางคือ `/` และ `/calendar` และฟอนต์ Bai Jamjuree จาก Google Fonts ไม่ใช้ไลบรารี UI ทุกคอมโพเนนต์เขียนเอง
 
 ## การติดตั้งและรัน
+
+ต้องเปิด todo-api ให้ทำงานก่อน (ดูวิธีในไฟล์ README ของ todo-api) แล้วจึงรันหน้าเว็บ
 
 ```bash
 npm install
 cp .env.example .env   # ตั้งค่า VITE_API_URL ให้ชี้ไปที่ API Server
-npm run dev
+npm run dev            # เปิดที่ http://localhost:5173
 ```
+
+สร้างไฟล์สำหรับใช้งานจริงด้วย `npm run build` ซึ่งรัน `vue-tsc` ตรวจชนิดข้อมูลก่อนแล้วจึง build ด้วย Vite
 
 ## Environment Variables
 
-| ตัวแปร | ตัวอย่าง | คำอธิบาย |
-|---|---|---|
-| `VITE_API_URL` | `http://localhost:3333` | URL ของ RESTful API Server |
+`VITE_API_URL` คือ URL ของ RESTful API Server ค่าตัวอย่างคือ `http://localhost:3333` และ API อนุญาต CORS ให้ origin `http://localhost:5173`
+
+## โครงสร้างโปรเจกต์
+
+```
+src/
+  main.ts, router.ts, style.css   จุดเริ่มต้น เส้นทาง และโทเคนธีม Tailwind
+  App.vue                         โครงหน้า หัวหน้า หน้ารายละเอียด และแถบแจ้งเตือน
+  types.ts                        ชนิดข้อมูล Todo และค่าคงที่ของความสำคัญ
+  api/todos.ts                    fetch wrapper ของทุก endpoint และ ApiError
+  utils/date.ts                   วันที่แบบ YYYY-MM-DD และการแสดงผลภาษาไทย
+  composables/
+    useTodos.ts                   state กลาง optimistic update ย้อนกลับ เลิกทำ และแถบแจ้งเตือน
+    useListUi.ts                  ตัวกรอง ค้นหา และเรียง
+    useCalendarTodos.ts           จัดงานตามวันสำหรับปฏิทิน
+    useDetail.ts, useFocus.ts, useMedia.ts
+  components/                     การ์ด แถบเพิ่มงาน ตัวเลือก หน้ารายละเอียด วันที่เลือก และอื่น ๆ
+  views/ListView.vue, CalendarView.vue
+```
+
+## ภาพหน้าจอ
+
+ภาพทั้งหมดถ่ายจากแอปจริงที่ต่อกับ API จริงด้วยสคริปต์ `tools/shot/flows.mjs` ของโปรเจกต์หลัก ชุดเต็มอยู่ที่ `docs/screenshots/frontend/` ของโปรเจกต์
+
+หน้าแรกตอนยังไม่มีงาน
+
+![หน้าแรกตอนยังไม่มีงาน](docs/screenshots/03-01-empty-first-load-desktop.png)
+
+รายการงานบนจอใหญ่
+
+![รายการงานบนจอใหญ่](docs/screenshots/03-06-list-with-several-todos-desktop.png)
+
+รายการงานบนมือถือ
+
+![รายการงานบนมือถือ](docs/screenshots/03-24-list-with-several-todos-mobile.png)
+
+ตัวเลือกกำหนดส่งแบบกล่องลอยบนจอใหญ่ และแบบแผงเลื่อนขึ้นบนมือถือ
+
+![ตัวเลือกกำหนดส่งบนจอใหญ่](docs/screenshots/03-02-due-picker-open-desktop.png)
+
+![ตัวเลือกกำหนดส่งบนมือถือ](docs/screenshots/03-20-due-picker-open-mobile.png)
+
+ลบงานแล้วมีแถบเลิกทำ และตอนกำลังโหลด
+
+![ลบงานแล้วมีแถบเลิกทำ](docs/screenshots/03-09-delete-undo-toast-desktop.png)
+
+![ตอนกำลังโหลด](docs/screenshots/03-37-loading-skeleton-desktop.png)
+
+หน้ารายละเอียด ถามก่อนทิ้งการแก้ไข ข้อความใต้ช่องเมื่อข้อมูลไม่ผ่าน และบันทึกไม่สำเร็จบนมือถือ
+
+![ถามก่อนทิ้งการแก้ไข](docs/screenshots/04-03-detail-unsaved-changes-confirm-desktop.png)
+
+![ข้อมูลไม่ผ่าน](docs/screenshots/04-07-detail-422-message-under-field-desktop.png)
+
+![บันทึกไม่สำเร็จบนมือถือ](docs/screenshots/04-15-detail-save-failed-red-box-mobile.png)
+
+ปฏิทินรายเดือนบนจอใหญ่ และแถบสัปดาห์บนมือถือ
+
+![ปฏิทินรายเดือน](docs/screenshots/05-01-month-view-today-selected-desktop.png)
+
+![ปฏิทินรายสัปดาห์บนมือถือ](docs/screenshots/05-10-week-view-today-selected-mobile.png)
+
+ส่งไม่สำเร็จแล้วย้อนกลับพร้อมแถบสีแดง และโหลดรายการไม่สำเร็จ
+
+![ย้อนกลับพร้อมแถบสีแดง](docs/screenshots/06-14-failed-save-rolled-back-red-toast-desktop.png)
+
+![โหลดรายการไม่สำเร็จ](docs/screenshots/06-26-load-error-card-api-stopped-desktop.png)
+
+รีเฟรชหน้าแล้วข้อมูลยังอยู่ (ก่อนและหลังรีเฟรช)
+
+![ก่อนรีเฟรช](docs/screenshots/06-18-persistence-before-reload-desktop.png)
+
+![หลังรีเฟรช](docs/screenshots/06-19-persistence-after-reload-desktop.png)
+
+คำขอที่ส่งไปยัง API ในแต่ละการกระทำ และผลการ build
+
+![คำขอที่ส่งไปยัง API](docs/screenshots/06-22-network-requests-per-action.png)
+
+![npm run build](docs/screenshots/06-23-npm-run-build.png)
