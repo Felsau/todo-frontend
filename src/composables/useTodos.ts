@@ -142,6 +142,7 @@ function holdToast(on: boolean) {
 const MSG = {
   toggle: 'บันทึกไม่สำเร็จ เราย้อนกลับให้แล้ว ลองอีกครั้งนะ',
   addKept: 'เพิ่มงานไม่สำเร็จ ข้อความยังอยู่ในช่องพิมพ์ ลองกดเพิ่มอีกครั้งนะ',
+  full: 'รายการเต็มแล้ว (200 งาน) ลบงานที่เสร็จแล้วก่อน แล้วค่อยเพิ่มใหม่นะ',
   remove: 'ลบไม่สำเร็จ เรากู้งานกลับมาให้แล้ว ลองอีกครั้งนะ',
   undo: 'กู้งานกลับมาไม่สำเร็จ ลองอีกครั้งนะ',
   clear: 'ลบงานที่เสร็จแล้วไม่สำเร็จ เรากู้งานกลับมาให้แล้ว ลองอีกครั้งนะ',
@@ -313,9 +314,16 @@ function add(
       realIds.set(tempId, row.id)
       swapRow(tempId, row)
     })
-    .catch(() => {
+    .catch((err: unknown) => {
       const i = indexOf(tempId)
       if (i >= 0) todos.value.splice(i, 1)
+      // The list is full (200 tasks): trying again cannot help, so say what will (round 6).
+      const full = err instanceof ApiError && err.errors.some((e) => e.rule === 'maxTodos')
+      if (full) {
+        opts.restore?.()
+        showToast('error', MSG.full)
+        return
+      }
       // Keep what the person typed (R2-05): back into the form, or a retry button.
       if (opts.restore?.()) showToast('error', MSG.addKept)
       else
