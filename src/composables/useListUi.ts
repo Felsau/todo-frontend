@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { PRIORITY_LABEL, PRIORITY_RANK, type FilterKey, type SortKey, type Todo } from '../types'
-import { addDays, isOverdue, toISO, today } from '../utils/date'
+import { addDays, bangkokDay, isOverdue, today } from '../utils/date'
 import { useTodos } from './useTodos'
 
 /* Filter, search and sort state of the list view. All of it runs in the browser. */
@@ -97,7 +97,7 @@ const byCompleted = (a: Todo, b: Todo) => {
 function openGroup(t: Todo, s: SortKey, d: string): GroupKey {
   if (s === 'priority') return t.priority
   if (s === 'newest') {
-    const added = t.id < 0 ? d : toISO(new Date(t.created_at))
+    const added = t.id < 0 ? d : bangkokDay(new Date(t.created_at))
     return added >= d ? 'addedToday' : added === addDays(d, -1) ? 'addedYesterday' : 'addedEarlier'
   }
   if (!t.due_date) return 'none'

@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { todayRequest } from '../composables/useCalendarTodos'
 import { useListUi } from '../composables/useListUi'
 import { useTodos } from '../composables/useTodos'
-import { eyebrowDate, today } from '../utils/date'
+import { awayFromThaiTime, eyebrowDate, today } from '../utils/date'
 import { focusHome } from '../utils/reveal'
 import Icon from './Icon.vue'
 
@@ -79,7 +79,7 @@ const sticker =
     <!-- On phones the date gets a line of its own, so the title and the stickers share the next one (UI 9). -->
     <div class="order-1 flex flex-col gap-0.5 max-sm:contents sm:gap-1">
       <p class="m-0 text-[0.8125rem] leading-normal font-semibold text-muted max-sm:order-0 max-sm:-mb-3.5 max-sm:w-full">
-        {{ eyebrowDate(today) }}
+        {{ eyebrowDate(today) }}<span v-if="awayFromThaiTime()"> (เวลาประเทศไทย)</span>
       </p>
       <h1
         tabindex="-1"

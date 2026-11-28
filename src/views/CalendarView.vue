@@ -19,6 +19,13 @@ const { on, chipClass, dotClass } = useCalendarTodos()
 const isSm = useIsSm()
 
 const selected = ref(today.value)
+/* Midnight with the calendar open on today: move to the new today; a day the person picked stays (round 7, F1). */
+watch(today, (now, before) => {
+  if (selected.value !== before) return
+  selected.value = now
+  monthStart.value = firstOfMonth(now)
+  weekStart.value = startOfWeek(now)
+})
 /** First day of the month shown in the grid. */
 const monthStart = ref(toISO(new Date(parseISO(today.value).getFullYear(), parseISO(today.value).getMonth(), 1)))
 const weekStart = ref(startOfWeek(today.value))
@@ -164,7 +171,8 @@ const navBtn =
 
   <div v-else class="flex flex-wrap items-start gap-4 sm:gap-6">
     <section aria-label="ปฏิทิน" class="flex min-w-0 flex-[999_1_100%] flex-col gap-3 sm:flex-[3_1_560px]">
-      <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+      <!-- Phones: the buttons always sit on their own row, so they do not jump when a week spans two months (round 7, F5). -->
+      <div class="flex flex-wrap items-center justify-between gap-2 max-sm:flex-col max-sm:items-start sm:gap-3">
         <h2 aria-live="polite" class="m-0 text-[1.5rem] leading-normal font-bold whitespace-nowrap sm:text-[1.75rem]">
           {{ heading }}
         </h2>

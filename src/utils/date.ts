@@ -49,11 +49,22 @@ export function startOfWeek(iso: string): string {
   return toISO(d)
 }
 
+/*
+ * The list is shared and its dates are Thai dates (the API counts days in Asia/Bangkok), so "today"
+ * and the day of a timestamp are taken in Bangkok too. A reader in another time zone then sees the
+ * same today, overdue and done days as everyone else (round 7, F4).
+ */
+const fBangkokDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' })
+/** YYYY-MM-DD of an instant in Thailand. */
+export const bangkokDay = (d: Date = new Date()): string => fBangkokDay.format(d)
+/** The device clock is not on Thai time (UTC+7), so the header says the dates are Thai. */
+export const awayFromThaiTime = () => new Date().getTimezoneOffset() !== -420
+
 /** Reactive "today", refreshed so the app survives midnight and long-lived tabs. */
-export const today = ref(toISO(new Date()))
+export const today = ref(bangkokDay())
 
 function refreshToday() {
-  const now = toISO(new Date())
+  const now = bangkokDay()
   if (now !== today.value) today.value = now
 }
 if (typeof window !== 'undefined') {
@@ -69,6 +80,7 @@ const fWeekdayLong = th({ weekday: 'long' })
 const fDayMonthLong = th({ day: 'numeric', month: 'long' })
 const fFull = th({ day: 'numeric', month: 'long', year: 'numeric' })
 const fStamp = th({
+  timeZone: 'Asia/Bangkok',
   day: 'numeric',
   month: 'short',
   year: 'numeric',
@@ -154,7 +166,7 @@ export function dueInfo(due: string | null, done: boolean, todayISO: string): Du
 export function doneLabel(completedAt: string | null): string | null {
   if (!completedAt) return null
   const d = new Date(completedAt)
-  return Number.isNaN(d.getTime()) ? null : `เสร็จ ${shortDate(toISO(d))}`
+  return Number.isNaN(d.getTime()) ? null : `เสร็จ ${shortDate(bangkokDay(d))}`
 }
 
 export function isOverdue(due: string | null, done: boolean, todayISO: string): boolean {

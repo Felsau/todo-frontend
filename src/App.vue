@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
 import ConnectionBanner from './components/ConnectionBanner.vue'
@@ -11,6 +11,7 @@ import { useAddForm } from './composables/useAddForm'
 import { useDetail } from './composables/useDetail'
 import { useSharedNotice } from './composables/useSharedNotice'
 import { useTodos } from './composables/useTodos'
+import { today } from './utils/date'
 import { focusHome } from './utils/reveal'
 
 const { load, refresh, status } = useTodos()
@@ -50,6 +51,13 @@ async function reopenNotice() {
 function onVisible() {
   if (document.visibilityState === 'visible' && detailId.value === null) void refresh()
 }
+/*
+ * A new day while the page is open: fetch again at once, so the API's demo list moved to the new
+ * day replaces yesterday's in one step instead of first showing a burst of overdue tasks (round 7, F2).
+ */
+watch(today, () => {
+  if (status.value === 'ready' && detailId.value === null) void refresh()
+})
 function onOnline() {
   if (status.value === 'error') void load()
   else if (detailId.value === null) void refresh()
