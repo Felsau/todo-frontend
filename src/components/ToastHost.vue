@@ -1,22 +1,44 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useAddForm } from '../composables/useAddForm'
 import { useDetail } from '../composables/useDetail'
+import { useIsSm } from '../composables/useMedia'
 import { useTodos, type Toast } from '../composables/useTodos'
 import { focusHome } from '../utils/reveal'
 import Icon from './Icon.vue'
 
 /*
  * One toast slot. The newest toast replaces the old one.
- * While the task detail is open the toast sits at the top, so it never covers the dialog's
- * buttons (QA round 2, R2-07). It stays while the pointer or keyboard focus is on it.
+ * While the task detail or the phone add sheet is open the toast sits at the top, so it never
+ * covers their buttons (QA round 2, R2-07). At the bottom its height is published as --toast-lift,
+ * so the + and back to top buttons move up above it. It stays while the pointer or keyboard focus is on it.
  * Screen readers hear every toast through two live regions that never leave the page.
  */
 const { toast, liveMessage, alertMessage, dismissToast, holdToast } = useTodos()
 const { detailId } = useDetail()
+const { sheetOpen } = useAddForm()
+const isSm = useIsSm()
 
 const box = ref<HTMLElement | null>(null)
 const actionBtn = ref<HTMLButtonElement | null>(null)
-const atTop = computed(() => detailId.value !== null)
+const atTop = computed(() => detailId.value !== null || (sheetOpen.value && !isSm.value))
+
+/* Room the floating buttons leave for the toast: its height plus a 12px gap, or nothing. */
+function setLift() {
+  const h = box.value && !atTop.value ? box.value.offsetHeight + 12 : 0
+  document.documentElement.style.setProperty('--toast-lift', `${h}px`)
+}
+const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(setLift)
+watch(
+  [box, atTop],
+  ([el], [old]) => {
+    if (old && old !== el) ro?.unobserve(old)
+    if (el) ro?.observe(el)
+    setLift()
+  },
+  { flush: 'post' },
+)
+onBeforeUnmount(() => ro?.disconnect())
 
 /** The toast whose action was just used: its action decides where focus goes next. */
 let actedId: number | null = null
@@ -85,7 +107,7 @@ function onKeydown(e: KeyboardEvent) {
 
   <div
     class="pointer-events-none fixed inset-x-5 z-60 flex justify-center sm:inset-x-6"
-    :class="atTop ? 'top-5' : 'bottom-5 sm:bottom-7'"
+    :class="atTop ? 'top-5' : 'bottom-[calc(1.25rem+env(safe-area-inset-bottom))] sm:bottom-7'"
   >
     <div
       v-if="toast"

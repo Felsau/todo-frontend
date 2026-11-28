@@ -1,12 +1,16 @@
 <script setup lang="ts">
+import { onBeforeUnmount, watchEffect } from 'vue'
 import AddBar from '../components/AddBar.vue'
+import AddSheet from '../components/AddSheet.vue'
 import ClearDone from '../components/ClearDone.vue'
 import EmptyIllustration from '../components/EmptyIllustration.vue'
 import FilterBar from '../components/FilterBar.vue'
+import Icon from '../components/Icon.vue'
 import ListSkeleton from '../components/ListSkeleton.vue'
 import LoadError from '../components/LoadError.vue'
 import SearchSort from '../components/SearchSort.vue'
 import TodoCard from '../components/TodoCard.vue'
+import { useAddForm } from '../composables/useAddForm'
 import { useListUi } from '../composables/useListUi'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
@@ -14,6 +18,15 @@ import { useTodos } from '../composables/useTodos'
 const { status, total } = useTodos()
 const { groups, emptyText, searchOpen } = useListUi()
 const isSm = useIsSm()
+const { sheetOpen, fabShown, openSheet } = useAddForm()
+
+/* Phones add through the round + button and its sheet; 640px and up keep the inline add row. */
+watchEffect(() => {
+  fabShown.value = !isSm.value && status.value === 'ready'
+})
+onBeforeUnmount(() => {
+  fabShown.value = false
+})
 
 const grid =
   'm-0 grid list-none gap-3 p-0 pr-1 pb-1 sm:grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] sm:gap-4.5 lg:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))]'
@@ -25,7 +38,7 @@ const grid =
 
   <template v-else>
     <SearchSort v-if="!isSm && searchOpen" compact />
-    <AddBar />
+    <AddBar v-if="isSm" />
 
     <div v-if="total > 0" class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-3 max-sm:w-full">
@@ -41,7 +54,7 @@ const grid =
         <div>
           <div class="text-[1.125rem] leading-normal font-bold sm:text-[1.25rem]">ยังไม่มีงานเลย</div>
           <div class="text-[0.875rem] leading-normal font-medium text-muted sm:text-[0.9375rem]">
-            พิมพ์งานแรกด้านบน แล้วกด “เพิ่ม +”
+            {{ isSm ? 'พิมพ์งานแรกด้านบน แล้วกด “เพิ่ม +”' : 'กดปุ่ม + มุมขวาล่าง เพื่อเพิ่มงานแรก' }}
           </div>
         </div>
       </li>
@@ -82,5 +95,20 @@ const grid =
     </div>
 
     <ClearDone v-if="!isSm" />
+
+    <!-- Thumb reach, above the iPhone home bar, lifted over the toast (its height is --toast-lift). -->
+    <button
+      v-if="fabShown"
+      type="button"
+      data-add-fab
+      aria-label="เพิ่มงานใหม่"
+      aria-haspopup="dialog"
+      :aria-expanded="sheetOpen"
+      class="fixed right-5 bottom-[calc(1.25rem+env(safe-area-inset-bottom)+var(--toast-lift,0px))] z-30 flex size-15 items-center justify-center rounded-full border-2 bg-accent p-0 text-ink shadow-brutal motion-safe:transition-[bottom,translate,box-shadow] motion-safe:duration-150 motion-safe:active:translate-0.75 motion-safe:active:shadow-none"
+      @click="openSheet"
+    >
+      <Icon name="plus" :size="30" :stroke="3.5" />
+    </button>
   </template>
+  <AddSheet />
 </template>

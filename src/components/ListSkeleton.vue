@@ -4,7 +4,7 @@ import WakeCard from './WakeCard.vue'
 
 /*
  * Grey stand in while the list loads. It has the same blocks and heights as the real page
- * (add bar with its two option chips, four 44px filters, cards shaped like the real cards), so
+ * (add bar with its two option chips from 640px, four 44px filters, cards shaped like the real cards), so
  * nothing jumps when the tasks arrive (QA round 3, UI 11).
  */
 const { waitedSec } = useTodos()
@@ -15,9 +15,9 @@ const { waitedSec } = useTodos()
     <WakeCard />
   </div>
   <div v-else class="flex flex-col gap-4 sm:gap-6" aria-busy="true" role="status" aria-live="polite">
-    <!-- add bar -->
+    <!-- add bar (phones add through the round + button instead) -->
     <div
-      class="flex flex-col gap-2.5 sm:gap-3 sm:rounded-2xl sm:border-2 sm:border-line sm:bg-white sm:p-3.5 sm:shadow-[4px_4px_0_var(--color-line)]"
+      class="flex flex-col max-sm:hidden gap-2.5 sm:gap-3 sm:rounded-2xl sm:border-2 sm:border-line sm:bg-white sm:p-3.5 sm:shadow-[4px_4px_0_var(--color-line)]"
     >
       <div class="flex gap-2 sm:gap-2.5">
         <div class="box-border h-13 flex-1 rounded-xl border-2 bg-white shadow-brutal-sm sm:h-13.5 sm:border-line sm:shadow-none"></div>

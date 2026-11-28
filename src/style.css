@@ -29,6 +29,7 @@
 
   --animate-bob: bob 1.6s ease-in-out infinite;
   --animate-stripes: stripes 0.8s linear infinite;
+  --animate-sheet-up: sheet-up 0.18s ease-out;
 
   @keyframes bob {
     0%,
@@ -37,6 +38,11 @@
     }
     50% {
       translate: 0 -7px;
+    }
+  }
+  @keyframes sheet-up {
+    from {
+      translate: 0 100%;
     }
   }
   @keyframes stripes {

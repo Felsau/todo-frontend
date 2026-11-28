@@ -263,9 +263,15 @@ interface AddOptions {
   restore?: () => boolean
   /** Shows the new card when the person asks to see it (default: scroll to it). */
   reveal?: (id: number) => void
+  /** No toast: the phone add sheet shows its own confirmation and announces when it closes. */
+  quiet?: boolean
 }
 
-function add(input: { title: string; priority: Priority; due_date: string | null }, opts: AddOptions = {}) {
+/** Adds a task at once (optimistic) and returns its temporary id. */
+function add(
+  input: { title: string; priority: Priority; due_date: string | null },
+  opts: AddOptions = {},
+): number | undefined {
   const title = input.title.trim()
   if (isBlank(title)) return
   const tempId = --tempSeq
@@ -281,7 +287,7 @@ function add(input: { title: string; priority: Priority; due_date: string | null
     updated_at: stamp,
   })
   locked[tempId] = true
-  void nextTick(() => announceAdded(tempId, title, opts.reveal))
+  if (!opts.quiet) void nextTick(() => announceAdded(tempId, title, opts.reveal))
   todosApi
     .create({ title, priority: input.priority, due_date: input.due_date })
     .then((row) => {
@@ -302,13 +308,16 @@ function add(input: { title: string; priority: Priority; due_date: string | null
     .finally(() => {
       delete locked[tempId]
     })
+  return tempId
 }
 
-/** Tells the person the task was added, and where it went when it is off screen (R2-02). */
-function announceAdded(tempId: number, title: string, reveal?: (id: number) => void) {
+/**
+ * Tells the person the task was added, and where it went when it is off screen (R2-02).
+ * Works with the temporary id also after the server has given the row its real id.
+ */
+function announceAdded(tempId: number, title: string, reveal?: (id: number) => void, message = `เพิ่ม “${title}” แล้ว`) {
   if (indexOf(tempId) < 0 && !realIds.has(tempId)) return // already failed and taken out
-  const message = `เพิ่ม “${title}” แล้ว`
-  const el = cardOf(tempId)
+  const el = cardOf(realIds.get(tempId) ?? tempId)
   const visible = !!el && isOnScreen(el)
   if (el && visible) flash(el)
   if (toast.value?.kind === 'undo') {
@@ -529,6 +538,7 @@ export function useTodos() {
     load,
     refresh,
     add,
+    announceAdded,
     toggle,
     remove,
     clearCompleted,

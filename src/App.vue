@@ -6,12 +6,14 @@ import DetailDialog from './components/DetailDialog.vue'
 import Icon from './components/Icon.vue'
 import SharedNotice from './components/SharedNotice.vue'
 import ToastHost from './components/ToastHost.vue'
+import { useAddForm } from './composables/useAddForm'
 import { useDetail } from './composables/useDetail'
 import { useTodos } from './composables/useTodos'
 import { focusHome } from './utils/reveal'
 
-const { load, refresh, status, toast } = useTodos()
+const { load, refresh, status } = useTodos()
 const { detailId } = useDetail()
+const { fabShown } = useAddForm()
 const router = useRouter()
 const route = useRoute()
 
@@ -47,10 +49,11 @@ onMounted(async () => {
   window.addEventListener('online', onOnline)
   // A reload while the detail or a sheet was open leaves its key in the address: drop it.
   await router.isReady()
-  if (route.query.task !== undefined || route.query.sheet !== undefined) {
+  if (route.query.task !== undefined || route.query.sheet !== undefined || route.query.add !== undefined) {
     const query = { ...route.query }
     delete query.task
     delete query.sheet
+    delete query.add
     void router.replace({ query })
   }
 })
@@ -63,19 +66,27 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-dvh bg-paper px-5 pt-9 pb-28 sm:px-6 sm:pt-11">
+  <div class="min-h-dvh bg-paper px-5 pt-9 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-11">
     <main class="mx-auto flex max-w-280 flex-col gap-4 sm:gap-6">
       <AppHeader />
       <SharedNotice />
       <RouterView />
     </main>
   </div>
+  <!--
+    Above the toast (its height is --toast-lift). On a phone list it sits left of the round +
+    button, on the same line, so neither covers the other or the last card.
+  -->
   <button
     v-if="scrolledFar && detailId === null"
     type="button"
     aria-label="กลับขึ้นบนสุด"
-    class="fixed right-5 z-30 flex size-12 items-center justify-center rounded-full border-2 bg-white shadow-brutal sm:right-6"
-    :class="toast ? 'bottom-24 sm:bottom-28' : 'bottom-5 sm:bottom-7'"
+    class="fixed z-30 flex size-12 items-center justify-center rounded-full border-2 bg-white shadow-brutal motion-safe:transition-[bottom] motion-safe:duration-150"
+    :class="
+      fabShown
+        ? 'right-23 bottom-[calc(1.625rem+env(safe-area-inset-bottom)+var(--toast-lift,0px))]'
+        : 'right-5 bottom-[calc(1.25rem+env(safe-area-inset-bottom)+var(--toast-lift,0px))] sm:right-6 sm:bottom-[calc(1.75rem+var(--toast-lift,0px))]'
+    "
     @click="toTop"
   >
     <Icon name="arrowUp" :size="22" :stroke="3" />

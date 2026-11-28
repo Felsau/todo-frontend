@@ -1,52 +1,28 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
-import { useListUi } from '../composables/useListUi'
-import { useTodos } from '../composables/useTodos'
-import { PRIORITY_HEX, PRIORITY_LABEL, type Priority } from '../types'
+import { ref } from 'vue'
+import { useAddForm } from '../composables/useAddForm'
+import { PRIORITY_HEX, PRIORITY_LABEL } from '../types'
 import { dueChipText, isPastDate, today } from '../utils/date'
-import { revealCard } from '../utils/reveal'
 import { isBlank } from '../utils/text'
 import AnchoredPicker from './AnchoredPicker.vue'
 import DuePicker from './DuePicker.vue'
 import Icon from './Icon.vue'
 import PriorityPicker from './PriorityPicker.vue'
 
-const { add } = useTodos()
-const { filter, query } = useListUi()
+/*
+ * The add form: inline above the list from 640px, and inside the phone add sheet (sheet=true).
+ * After adding, the cursor stays in the title box, so the next task can be typed at once.
+ */
+const props = defineProps<{ sheet?: boolean }>()
 
-const draft = ref('')
-const due = ref('')
-const priority = ref<Priority>('normal')
+const { draft, due, priority, submit: send } = useAddForm()
 const input = ref<HTMLInputElement | null>(null)
 
 function submit() {
-  const title = draft.value.trim()
-  if (isBlank(title)) return
-  const sent = { title, due: due.value, priority: priority.value }
-  add(
-    { title, priority: sent.priority, due_date: sent.due || null },
-    {
-      // A failed add puts the typed values back, unless the box is already in use again (R2-05).
-      restore: () => {
-        if (draft.value.trim() !== '') return false
-        draft.value = sent.title
-        due.value = sent.due
-        priority.value = sent.priority
-        return true
-      },
-      // "ดูงาน": make sure no filter or search hides the new card, then go to it (R2-02).
-      reveal: (id) => {
-        filter.value = 'all'
-        query.value = ''
-        void nextTick(() => revealCard(id))
-      },
-    },
-  )
-  draft.value = ''
-  due.value = ''
-  priority.value = 'normal'
-  input.value?.focus()
+  if (send(props.sheet)) input.value?.focus()
 }
+
+defineExpose({ focus: () => input.value?.focus() })
 </script>
 
 <template>
