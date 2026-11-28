@@ -24,9 +24,15 @@ const actionBtn = ref<HTMLButtonElement | null>(null)
 const atTop = computed(() => detailId.value !== null || (sheetOpen.value && !isSm.value))
 
 /* Room the floating buttons leave for the toast: its height plus a 12px gap, or nothing. */
+let lastLift = 0
 function setLift() {
   const h = box.value && !atTop.value ? box.value.offsetHeight + 12 : 0
-  document.documentElement.style.setProperty('--toast-lift', `${h}px`)
+  const root = document.documentElement
+  const atEnd = window.scrollY > 0 && window.innerHeight + window.scrollY >= root.scrollHeight - 4
+  root.style.setProperty('--toast-lift', `${h}px`)
+  // Scrolled to the end: the page grows by the toast's height, so follow it and keep the last card clear (P14).
+  if (h > lastLift && atEnd) requestAnimationFrame(() => window.scrollBy({ top: h - lastLift }))
+  lastLift = h
 }
 const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(setLift)
 watch(
@@ -122,7 +128,7 @@ function onKeydown(e: KeyboardEvent) {
       @focusout="onFocusOut"
       @keydown="onKeydown"
     >
-      <Icon v-if="toast.kind === 'saved' || toast.kind === 'added'" name="check" :size="16" :stroke="3" />
+      <Icon v-if="toast.kind === 'saved' || toast.kind === 'added' || toast.kind === 'change'" name="check" :size="16" :stroke="3" />
       <span class="min-w-0 flex-1 wrap-anywhere" :class="!toast.actionLabel && toast.kind !== 'error' && 'pr-3'">
         {{ toast.message }}
       </span>

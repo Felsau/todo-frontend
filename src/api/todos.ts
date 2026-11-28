@@ -1,3 +1,4 @@
+import { ref } from 'vue'
 import type { NewTodo, Todo, TodoPatch } from '../types'
 
 const BASE_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:3333').replace(/\/+$/, '')
@@ -34,6 +35,12 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * True after a request could not reach the server at all (no internet, or the server is down),
+ * until the next request gets an answer. The app shows a banner while it is true (U13).
+ */
+export const unreachable = ref(false)
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response
   try {
@@ -46,8 +53,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch {
+    unreachable.value = true
     throw new ApiError(0, [], 'network')
   }
+  unreachable.value = false
 
   if (res.status === 204) return undefined as T
 
@@ -71,9 +80,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return data as T
 }
 
+/** An API that does not send completed_at yet (the live one before its update) reads as null. */
+export function normalise(row: Todo): Todo {
+  return { ...row, completed_at: row.completed_at ?? null }
+}
+
 export const todosApi = {
-  list: () => request<Todo[]>('GET', '/todos'),
-  create: (input: NewTodo) => request<Todo>('POST', '/todos', input),
+  list: () => request<Todo[]>('GET', '/todos').then((rows) => rows.map(normalise)),
+  create: (input: NewTodo) => request<Todo>('POST', '/todos', input).then(normalise),
   update: (id: number, patch: TodoPatch) => request<Todo>('PATCH', `/todos/${id}`, patch),
   remove: (id: number) => request<void>('DELETE', `/todos/${id}`),
   removeCompleted: () => request<void>('DELETE', '/todos/completed'),

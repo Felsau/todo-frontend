@@ -16,6 +16,9 @@ const PATHS = {
   spinner: 'M12 3a9 9 0 1 0 9 9',
   arrowUp: 'M12 19V5M5 12l7-7 7 7',
   users: 'M9 11a4 4 0 1 0 0-8a4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6',
+  link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+  serverOff: 'M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01M12 11v2',
+  alert: 'M12 3l10 18H2zM12 10v5M12 18h.01',
 } as const
 
 export type IconName = keyof typeof PATHS

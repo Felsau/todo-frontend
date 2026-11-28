@@ -10,6 +10,11 @@ export interface Todo {
   notes: string | null
   created_at: string
   updated_at: string
+  /**
+   * When the task was ticked (ISO), null while it is not done. The API sets it; an older API
+   * that does not send it yet is read as null (normalised in the store).
+   */
+  completed_at: string | null
 }
 
 /** Fields the web app sends when creating a todo. */
@@ -19,6 +24,9 @@ export interface NewTodo {
   priority?: Priority
   due_date?: string | null
   notes?: string | null
+  /** Only when restoring a deleted task (undo), so it keeps its place and its history. */
+  created_at?: string
+  completed_at?: string
 }
 
 export type TodoPatch = Partial<Pick<Todo, 'title' | 'is_completed' | 'priority' | 'due_date' | 'notes'>>

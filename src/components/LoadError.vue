@@ -15,19 +15,20 @@ const { load, loadError } = useTodos()
     class="box-border flex flex-col items-start gap-2.5 rounded-2xl border-2 bg-white px-4 py-4.5 shadow-brutal-danger sm:mx-auto sm:mt-4 sm:w-full sm:max-w-xl sm:items-center sm:px-7 sm:py-7 sm:text-center"
   >
     <!-- Light red, not the pink of “สำคัญมาก”: this box means something went wrong (UI 10). -->
+    <!-- Broken wifi only when this device is offline; a server problem gets a server sign (U12). -->
     <div class="flex size-11 items-center justify-center rounded-xl border-2 bg-[#ffe3e3]">
-      <Icon name="wifiOff" :size="22" />
+      <Icon :name="loadError === 'offline' ? 'wifiOff' : 'serverOff'" :size="22" />
     </div>
     <template v-if="loadError === 'offline'">
       <h2 class="m-0 text-[1.125rem] leading-normal font-bold">ยังไม่ได้ต่ออินเทอร์เน็ต</h2>
       <p class="m-0 text-[0.8125rem] leading-normal font-medium text-[#333]">
-        ต่ออินเทอร์เน็ตแล้วรายการจะโหลดขึ้นมาเอง หรือกดลองใหม่ก็ได้ รายการของคุณไม่ได้หายไปไหน
+        ต่ออินเทอร์เน็ตแล้วรายการจะโหลดขึ้นมาเอง หรือกดลองใหม่ก็ได้ งานในรายการไม่ได้หายไปไหน
       </p>
     </template>
     <template v-else>
       <h2 class="m-0 text-[1.125rem] leading-normal font-bold">โหลดรายการไม่สำเร็จ</h2>
       <p class="m-0 text-[0.8125rem] leading-normal font-medium text-[#333]">
-        อาจเป็นเพราะอินเทอร์เน็ตหลุด หรือระบบขัดข้องชั่วคราว รายการของคุณไม่ได้หายไปไหน ลองใหม่อีกครั้งได้เลย
+        อินเทอร์เน็ตของเครื่องนี้ใช้ได้ แต่ระบบยังไม่ตอบ อาจขัดข้องชั่วคราว งานในรายการไม่ได้หายไปไหน ลองใหม่อีกครั้งได้เลย
       </p>
     </template>
     <button type="button" class="btn-primary" @click="load()">ลองใหม่</button>

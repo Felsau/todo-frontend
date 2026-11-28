@@ -1,7 +1,7 @@
 import { computed, nextTick, reactive, ref } from 'vue'
 import { ApiError, todosApi } from '../api/todos'
 import type { Priority, Todo, TodoPatch } from '../types'
-import { isOverdue, toISO, today } from '../utils/date'
+import { isOverdue, today } from '../utils/date'
 import { cardOf, flash, focusCard, focusHome, isOnScreen, neighbourOf, revealCard } from '../utils/reveal'
 import { isBlank } from '../utils/text'
 
@@ -16,7 +16,8 @@ import { isBlank } from '../utils/text'
 export type LoadStatus = 'loading' | 'ready' | 'error'
 /** Why the first load failed: this device has no internet, or the server did not answer. */
 export type LoadError = 'offline' | 'failed'
-export type ToastKind = 'undo' | 'added' | 'saved' | 'error'
+/** undo: a delete can be undone. change: a tick or a date move can be undone. */
+export type ToastKind = 'undo' | 'change' | 'added' | 'saved' | 'error'
 
 export interface Toast {
   id: number
@@ -30,7 +31,8 @@ export interface Toast {
   returnFocus?: () => void
 }
 
-const TOAST_MS: Record<ToastKind, number> = { undo: 5000, added: 4000, saved: 2500, error: 6000 }
+/* A delete stays undoable for 8 s: 5 s was too short while scrolling (QA round 4, P15). */
+const TOAST_MS: Record<ToastKind, number> = { undo: 8000, change: 6000, added: 4000, saved: 2500, error: 6000 }
 const SETTLE_MS = 800
 const BUSY_MS = 300
 const WAKE_AFTER_MS = 3000
@@ -142,6 +144,19 @@ const MSG = {
   undo: 'กู้งานกลับมาไม่สำเร็จ ลองอีกครั้งนะ',
   clear: 'ลบงานที่เสร็จแล้วไม่สำเร็จ เรากู้งานกลับมาให้แล้ว ลองอีกครั้งนะ',
   gone: 'งานนี้ถูกลบไปแล้ว',
+  move: 'ย้ายวันไม่สำเร็จ เราย้อนกลับให้แล้ว ลองอีกครั้งนะ',
+  offline: 'ยังไม่ได้ต่ออินเทอร์เน็ต ต่อแล้วลองใหม่อีกครั้งนะ',
+  addOffline: 'ยังไม่ได้ต่ออินเทอร์เน็ต ข้อความยังอยู่ในช่องพิมพ์ ต่อแล้วกดเพิ่มอีกครั้งนะ',
+}
+
+/**
+ * No internet on this device: say so once and change nothing, instead of flipping the card and
+ * flipping it back a moment later (QA round 4, U13). The banner under the header says it too.
+ */
+function blockedOffline(message = MSG.offline): boolean {
+  if (navigator.onLine) return false
+  showToast('error', message)
+  return true
 }
 
 /* ---------- helpers ---------- */
@@ -247,8 +262,8 @@ async function load() {
 }
 
 /** Picks up changes made in another tab or on another device (R2-08). Skips while anything is in flight. */
-async function refresh() {
-  if (status.value !== 'ready' || inFlight() || Date.now() - lastRefresh < REFRESH_GAP_MS) return
+async function refresh(force = false) {
+  if (status.value !== 'ready' || inFlight() || (!force && Date.now() - lastRefresh < REFRESH_GAP_MS)) return
   lastRefresh = Date.now()
   try {
     const rows = await todosApi.list()
@@ -274,6 +289,7 @@ function add(
 ): number | undefined {
   const title = input.title.trim()
   if (isBlank(title)) return
+  if (blockedOffline(MSG.addOffline)) return
   const tempId = --tempSeq
   const stamp = new Date().toISOString()
   todos.value.push({
@@ -285,6 +301,7 @@ function add(
     notes: null,
     created_at: stamp,
     updated_at: stamp,
+    completed_at: null,
   })
   locked[tempId] = true
   if (!opts.quiet) void nextTick(() => announceAdded(tempId, title, opts.reveal))
@@ -333,19 +350,49 @@ function announceAdded(tempId: number, title: string, reveal?: (id: number) => v
     })
 }
 
-function toggle(id: number) {
+/**
+ * A tick or a date move can be undone from its toast. It never pushes away the chance to undo
+ * a delete: then only screen readers hear it (QA round 4, owner decision 4).
+ */
+function offerChange(message: string, undo: () => void) {
+  if (toast.value?.kind === 'undo') {
+    say(message)
+    return
+  }
+  showToast('change', message, { actionLabel: 'เลิกทำ', onAction: undo })
+}
+
+export interface ToggleOptions {
+  /** Toast text for the change, written by the view that knows where the card goes. */
+  describe?: (t: Todo, done: boolean) => string
+  /** No toast (the undo itself, or the detail dialog that shows the change in place). */
+  quiet?: boolean
+}
+
+/**
+ * Ticks or unticks at once. The card keeps its place for a moment, then moves, and a toast says
+ * where it went with "เลิกทำ" (QA round 4, P3). completed_at is set here too, so the done group
+ * can be ordered by it before the server answers.
+ */
+function toggle(id: number, opts: ToggleOptions = {}) {
   const t = find(id)
   if (!t || locked[id]) return
+  if (blockedOffline()) return
   const next = !t.is_completed
+  const prevAt = t.completed_at
   startSettle(id, t.is_completed)
   t.is_completed = next
+  t.completed_at = next ? new Date().toISOString() : null
   withBusy(
     id,
     serial(id, () => todosApi.update(id, { is_completed: next })),
   )
     .then((row) => {
       const cur = find(id)
-      if (cur) cur.updated_at = row.updated_at
+      if (!cur) return
+      cur.updated_at = row.updated_at
+      // An API without completed_at keeps the time set above.
+      if (row.completed_at !== undefined && cur.is_completed === next) cur.completed_at = row.completed_at
     })
     .catch((err: unknown) => {
       const cur = find(id)
@@ -355,9 +402,63 @@ function toggle(id: number) {
         showToast('error', MSG.gone)
         return
       }
-      if (cur && cur.is_completed === next) cur.is_completed = !next
+      if (cur && cur.is_completed === next) {
+        cur.is_completed = !next
+        cur.completed_at = prevAt
+      }
       showToast('error', MSG.toggle)
     })
+  if (opts.quiet) return
+  const message = opts.describe?.(t, next) ?? (next ? `เสร็จแล้ว “${t.title}”` : `ยังไม่เสร็จ “${t.title}”`)
+  offerChange(message, () => {
+    const cur = find(id)
+    if (cur && cur.is_completed === next) {
+      toggle(id, { quiet: true })
+      say('เลิกทำแล้ว')
+    }
+  })
+}
+
+/** Changes only the due date, at once, and rolls back on failure. */
+function setDue(id: number, due: string | null): boolean {
+  const t = find(id)
+  if (!t || locked[id] || t.due_date === due) return false
+  if (blockedOffline()) return false
+  const prev = t.due_date
+  t.due_date = due
+  withBusy(
+    id,
+    serial(id, () => todosApi.update(id, { due_date: due })),
+  )
+    .then((row) => {
+      const cur = find(id)
+      if (cur) cur.updated_at = row.updated_at
+    })
+    .catch((err: unknown) => {
+      if (err instanceof ApiError && err.isNotFound) {
+        const i = indexOf(id)
+        if (i >= 0) todos.value.splice(i, 1)
+        showToast('error', MSG.gone)
+        return
+      }
+      const cur = find(id)
+      if (cur && cur.due_date === due) cur.due_date = prev
+      showToast('error', MSG.move)
+    })
+  return true
+}
+
+/**
+ * Moves an overdue task to today or tomorrow in one tap, with a toast and "เลิกทำ"
+ * (QA round 4, owner decision 5).
+ */
+function reschedule(id: number, due: string, message: string): boolean {
+  const prev = find(id)?.due_date ?? null
+  if (!setDue(id, due)) return false
+  offerChange(message, () => {
+    if (find(id)?.due_date === due && setDue(id, prev)) say('เลิกทำแล้ว')
+  })
+  return true
 }
 
 /** One undo toast for this deletion, joined with any deletions whose toast is still showing. */
@@ -380,6 +481,7 @@ function offerUndo(removals: Removal[], keyboard: boolean, returnFocus: () => vo
 function remove(id: number, opts: { keyboard?: boolean } = {}) {
   const index = indexOf(id)
   if (index < 0 || locked[id]) return
+  if (blockedOffline()) return
   const next = neighbourOf(id)
   const todo = { ...todos.value[index] }
   todos.value.splice(index, 1)
@@ -430,13 +532,27 @@ async function undoRemove({ todo, index, request }: Removal): Promise<number | n
       if (i >= 0) todos.value.splice(i, 1)
       return null
     }
-    const row = await todosApi.create({
+    // The same created and completed times, so the task keeps its place in every order (U3).
+    const plain = {
       title: todo.title,
       is_completed: todo.is_completed,
       priority: todo.priority,
       due_date: todo.due_date,
       notes: todo.notes,
+    }
+    const times = {
+      created_at: todo.created_at,
+      ...(todo.is_completed && todo.completed_at ? { completed_at: todo.completed_at } : {}),
+    }
+    // A server that refuses the times (for example a task made seconds ago) still gets the task back.
+    const row = await todosApi.create({ ...plain, ...times }).catch((err: unknown) => {
+      const timeField = (e: { field: string }) => e.field === 'created_at' || e.field === 'completed_at'
+      if (err instanceof ApiError && err.isValidation && err.errors.some(timeField)) return todosApi.create(plain)
+      throw err
     })
+    // An API that ignores those fields still shows the old times until the next load.
+    if (row.created_at !== todo.created_at) row.created_at = todo.created_at
+    if (todo.is_completed && row.completed_at === null) row.completed_at = todo.completed_at
     swapRow(tempId, row)
     return row.id
   } catch {
@@ -453,6 +569,7 @@ async function undoRemove({ todo, index, request }: Removal): Promise<number | n
 async function clearCompleted(opts: { keyboard?: boolean } = {}) {
   const removed = todos.value.filter((t) => t.is_completed && t.id > 0)
   if (removed.length === 0) return
+  if (blockedOffline()) return
   const places = removed.map((t) => ({ todo: { ...t }, index: indexOf(t.id) }))
   const ids = new Set(removed.map((t) => t.id))
   todos.value = todos.value.filter((t) => !ids.has(t.id))
@@ -484,7 +601,18 @@ async function clearCompleted(opts: { keyboard?: boolean } = {}) {
 async function saveDetail(id: number, patch: TodoPatch): Promise<Todo> {
   const row = await serial(id, () => todosApi.update(id, patch))
   const cur = find(id)
-  if (cur) Object.assign(cur, row)
+  if (cur) {
+    // An API without completed_at: keep the old value, or set it here when the status changed.
+    const at =
+      row.completed_at !== undefined
+        ? row.completed_at
+        : 'is_completed' in patch
+          ? patch.is_completed
+            ? new Date().toISOString()
+            : null
+          : cur.completed_at
+    Object.assign(cur, row, { completed_at: at })
+  }
   return row
 }
 
@@ -499,20 +627,14 @@ function forget(id: number) {
 const total = computed(() => todos.value.length)
 const doneCount = computed(() => todos.value.filter((t) => t.is_completed).length)
 /**
- * Today's progress for the header sticker: tasks due today, overdue tasks still open,
- * and overdue tasks ticked today (so finishing one moves the count up instead of dropping it).
- * `today` refreshes itself, so the count starts over after midnight.
+ * The header sticker: tasks due today and how many of them are done. Nothing else is counted, so
+ * it always equals the calendar's "เสร็จ x จาก y งาน" for today; overdue tasks have their own red
+ * sticker (QA round 4, P1, P2, P23, U1, U2). `today` refreshes itself after midnight.
  */
 const todayProgress = computed(() => {
   const d = today.value
-  const scope = todos.value.filter((t) => {
-    if (!t.due_date) return false
-    const due = t.due_date.slice(0, 10)
-    if (due === d) return true
-    if (due > d) return false
-    return !effDone(t) || toISO(new Date(t.updated_at)) === d
-  })
-  return { total: scope.length, done: scope.filter((t) => effDone(t)).length }
+  const scope = todos.value.filter((t) => t.due_date === d)
+  return { total: scope.length, done: scope.filter((t) => t.is_completed).length }
 })
 const overdueCount = computed(
   () => todos.value.filter((t) => isOverdue(t.due_date, t.is_completed, today.value)).length,
@@ -540,6 +662,7 @@ export function useTodos() {
     add,
     announceAdded,
     toggle,
+    reschedule,
     remove,
     clearCompleted,
     saveDetail,

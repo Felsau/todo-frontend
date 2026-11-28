@@ -1,19 +1,22 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
+import ConnectionBanner from './components/ConnectionBanner.vue'
 import DetailDialog from './components/DetailDialog.vue'
 import Icon from './components/Icon.vue'
 import SharedNotice from './components/SharedNotice.vue'
 import ToastHost from './components/ToastHost.vue'
 import { useAddForm } from './composables/useAddForm'
 import { useDetail } from './composables/useDetail'
+import { useSharedNotice } from './composables/useSharedNotice'
 import { useTodos } from './composables/useTodos'
 import { focusHome } from './utils/reveal'
 
 const { load, refresh, status } = useTodos()
 const { detailId } = useDetail()
 const { fabShown } = useAddForm()
+const notice = useSharedNotice()
 const router = useRouter()
 const route = useRoute()
 
@@ -31,6 +34,16 @@ function toTop() {
   const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
   window.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' })
   focusHome()
+}
+
+/* The shared notice can be read again from the foot of the page (QA round 4, P22). */
+async function reopenNotice() {
+  notice.reopen()
+  await nextTick()
+  const el = document.querySelector<HTMLElement>('[data-shared-notice]')
+  if (!el) return
+  el.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  el.focus({ preventScroll: true })
 }
 
 /* Another tab or device may have changed the list: look again when this tab comes back (R2-08). */
@@ -66,12 +79,25 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-dvh bg-paper px-5 pt-9 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-11">
+  <!-- The bottom room grows with the toast, so the + button never covers the last card (QA round 4, P14). -->
+  <div class="min-h-dvh bg-paper px-5 pt-9 pb-[calc(7rem+env(safe-area-inset-bottom)+var(--toast-lift,0px))] sm:px-6 sm:pt-11">
     <main class="mx-auto flex max-w-280 flex-col gap-4 sm:gap-6">
       <AppHeader />
+      <ConnectionBanner />
       <SharedNotice />
       <RouterView />
     </main>
+    <footer v-if="status === 'ready' && !notice.open.value" class="mx-auto mt-8 flex max-w-280 justify-center">
+      <button
+        type="button"
+        class="inline-flex min-h-11 items-center gap-2 rounded-full border-0 bg-transparent px-3 text-[0.8125rem] font-semibold text-muted underline decoration-1 underline-offset-4"
+        data-reopen-notice
+        @click="reopenNotice"
+      >
+        <Icon name="users" :size="16" />
+        รายการนี้ใช้ร่วมกัน ดูรายละเอียดและลิงก์
+      </button>
+    </footer>
   </div>
   <!--
     Above the toast (its height is --toast-lift). On a phone list it sits left of the round +
