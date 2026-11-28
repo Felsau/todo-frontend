@@ -22,3 +22,6 @@ export function useMedia(query: string): Ref<boolean> {
  * Tailwind's own breakpoint, so a bigger browser font size switches both at the same width.
  */
 export const useIsSm = () => useMedia('(min-width: 40rem)')
+
+/** true from 1024px up (Tailwind `lg`): three list columns instead of two. */
+export const useIsLg = () => useMedia('(min-width: 64rem)')

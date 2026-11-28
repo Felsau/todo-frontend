@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useDetail } from '../composables/useDetail'
+import { useListUi } from '../composables/useListUi'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_LABEL, type Todo } from '../types'
-import { dueInfo, today } from '../utils/date'
+import { addDays, dueInfo, today } from '../utils/date'
 import Icon from './Icon.vue'
 
 /*
@@ -12,15 +14,24 @@ import Icon from './Icon.vue'
  * title, so a card is about 100px tall instead of 155px (QA round 3, UI 2). Below 640px it is
  * the single row of the mobile design (toggle, title and chips, chevron, bin).
  * Long titles stop after three lines; the full title shows on hover and in the detail (UI 12).
+ * An overdue card offers to move it to today or tomorrow in one tap (QA round 4, owner decision 5),
+ * and a search hit inside the note is shown under the title (U14).
  */
 const props = defineProps<{ todo: Todo }>()
-const { toggle, remove, busy, locked } = useTodos()
+const { toggle, reschedule, remove, busy, locked } = useTodos()
+const { tickMessage, noteHit } = useListUi()
 const { openDetail } = useDetail()
 const isSm = useIsSm()
 
 const due = () => dueInfo(props.todo.due_date, props.todo.is_completed, today.value)
 /** A toggle keeps one name; aria-pressed tells whether the task is done. */
 const toggleLabel = () => `ทำเครื่องหมายว่าเสร็จ: ${props.todo.title}`
+
+const onToggle = () => toggle(props.todo.id, { describe: tickMessage })
+const overdue = computed(() => !!due()?.overdue)
+const hit = computed(() => noteHit(props.todo))
+const moveToday = () => reschedule(props.todo.id, today.value, `ย้าย “${props.todo.title}” มาวันนี้แล้ว`)
+const moveTomorrow = () => reschedule(props.todo.id, addDays(today.value, 1), `ย้าย “${props.todo.title}” ไปพรุ่งนี้แล้ว`)
 
 /** detail 0 means the button was pressed with Enter or Space. */
 const onRemove = (e: MouseEvent) => remove(props.todo.id, { keyboard: e.detail === 0 })
@@ -53,7 +64,7 @@ function onBodyClick() {
       :aria-label="toggleLabel()"
       :aria-busy="busy[todo.id] || undefined"
       :disabled="locked[todo.id]"
-      @click="toggle(todo.id)"
+      @click="onToggle"
     >
       <Icon v-if="busy[todo.id]" name="spinner" :size="22" :stroke="3" />
       <Icon v-else-if="todo.is_completed" name="check" :size="22" :stroke="3.5" />
@@ -108,12 +119,25 @@ function onBodyClick() {
         {{ due()!.label }}
       </span>
     </div>
+
+    <p v-if="hit" class="col-start-2 col-end-4 m-0 text-[0.8125rem] leading-normal font-medium wrap-anywhere text-[#333]" data-note-hit>
+      เจอในโน้ต: {{ hit.before }}<mark class="rounded bg-accent px-0.5 text-ink">{{ hit.match }}</mark>{{ hit.after }}
+    </p>
+
+    <div v-if="overdue" class="col-start-2 col-end-4 flex flex-wrap gap-2" data-move-row>
+      <button type="button" class="btn-pill h-10 bg-white px-3 text-[0.8125rem]" :aria-label="`ย้ายมาวันนี้: ${todo.title}`" :disabled="locked[todo.id]" @click="moveToday">
+        ย้ายมาวันนี้
+      </button>
+      <button type="button" class="btn-pill h-10 bg-white px-3 text-[0.8125rem]" :aria-label="`ย้ายไปพรุ่งนี้: ${todo.title}`" :disabled="locked[todo.id]" @click="moveTomorrow">
+        ย้ายไปพรุ่งนี้
+      </button>
+    </div>
   </li>
 
   <!-- mobile row -->
   <li
     v-else
-    class="box-border flex min-h-17 items-center gap-1.5 rounded-[14px] border-2 p-1.5"
+    class="box-border flex min-h-17 flex-wrap items-center gap-1.5 rounded-[14px] border-2 p-1.5"
     :class="todo.is_completed ? 'bg-white' : [PRIORITY_BG[todo.priority], 'shadow-brutal']"
     :data-todo-id="todo.id"
   >
@@ -124,7 +148,7 @@ function onBodyClick() {
       :aria-label="toggleLabel()"
       :aria-busy="busy[todo.id] || undefined"
       :disabled="locked[todo.id]"
-      @click="toggle(todo.id)"
+      @click="onToggle"
     >
       <Icon v-if="busy[todo.id]" name="spinner" :size="22" :stroke="3" />
       <Icon v-else-if="todo.is_completed" name="check" :size="22" :stroke="3.5" />
@@ -159,6 +183,9 @@ function onBodyClick() {
             {{ due()!.label }}
           </span>
         </span>
+        <span v-if="hit" class="text-[0.8125rem] leading-normal font-medium wrap-anywhere text-[#333]" data-note-hit>
+          เจอในโน้ต: {{ hit.before }}<mark class="rounded bg-accent px-0.5 text-ink">{{ hit.match }}</mark>{{ hit.after }}
+        </span>
       </span>
       <Icon name="chevronRight" :size="16" :stroke="3" />
     </button>
@@ -171,5 +198,13 @@ function onBodyClick() {
     >
       <Icon name="trash" :size="20" :stroke="2.5" />
     </button>
+    <div v-if="overdue" class="flex w-full flex-wrap gap-2 pb-0.5 pl-13" data-move-row>
+      <button type="button" class="btn-pill bg-white px-3 text-[0.8125rem]" :aria-label="`ย้ายมาวันนี้: ${todo.title}`" :disabled="locked[todo.id]" @click="moveToday">
+        ย้ายมาวันนี้
+      </button>
+      <button type="button" class="btn-pill bg-white px-3 text-[0.8125rem]" :aria-label="`ย้ายไปพรุ่งนี้: ${todo.title}`" :disabled="locked[todo.id]" @click="moveTomorrow">
+        ย้ายไปพรุ่งนี้
+      </button>
+    </div>
   </li>
 </template>

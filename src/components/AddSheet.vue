@@ -12,7 +12,8 @@ import Icon from './Icon.vue'
 /*
  * Phone add sheet (below 640px), opened from the round + button of the list view.
  * It opens with the cursor in the title box, so the keyboard comes up at once. After an add it
- * stays open with a short confirmation and an empty box, ready for the next task; the X, Esc,
+ * stays open with a short confirmation and an empty box, ready for the next task, keeping the
+ * chosen date and priority until it closes (QA round 4, P8); the X, Esc,
  * the backdrop and the phone's Back button close it (asking first when text is still typed).
  * On closing, the usual "เพิ่ม ... แล้ว" toast with "ดูงาน" tells where the new task went, and
  * focus goes back to the + button. The sheet sits on top of the on screen keyboard.
@@ -83,6 +84,8 @@ function close() {
   if (!sheetOpen.value) return
   sheetOpen.value = false
   showConfirm.value = false
+  // The date and priority stay while the sheet is open; it opens fresh next time (QA round 4, P8).
+  if (isBlank(draft.value)) reset()
   const last = lastAdded.value
   const n = addedCount.value
   lastAdded.value = null

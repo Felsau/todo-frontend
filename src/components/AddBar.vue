@@ -2,16 +2,16 @@
 import { ref } from 'vue'
 import { useAddForm } from '../composables/useAddForm'
 import { PRIORITY_HEX, PRIORITY_LABEL } from '../types'
-import { dueChipText, isPastDate, today } from '../utils/date'
 import { isBlank } from '../utils/text'
 import AnchoredPicker from './AnchoredPicker.vue'
-import DuePicker from './DuePicker.vue'
 import Icon from './Icon.vue'
 import PriorityPicker from './PriorityPicker.vue'
+import QuickDue from './QuickDue.vue'
 
 /*
  * The add form: inline above the list from 640px, and inside the phone add sheet (sheet=true).
- * After adding, the cursor stays in the title box, so the next task can be typed at once.
+ * After adding, the cursor stays in the title box, so the next task can be typed at once, and
+ * the chosen date and priority stay for it (QA round 4, P8).
  */
 const props = defineProps<{ sheet?: boolean }>()
 
@@ -59,27 +59,11 @@ defineExpose({ focus: () => input.value?.focus() })
       {{ draft.length >= 200 ? 'ครบ 200 ตัวอักษรแล้ว เขียนต่อในโน้ตได้' : `เหลืออีก ${200 - draft.length} ตัวอักษร` }}
     </p>
 
-    <div class="flex flex-wrap items-center gap-2 sm:gap-2.5">
-      <AnchoredPicker label="กำหนดส่ง" panel-class="w-95 max-w-[80vw]">
-        <template #trigger="{ triggerProps }">
-          <!-- A date already gone turns the chip red before the task is added (UI 6). -->
-          <button
-            type="button"
-            class="btn-pill gap-2 pr-3 pl-3.5"
-            :class="isPastDate(due, today) && 'border-danger bg-[#ffe3e3] text-[#8f1d1d]'"
-            v-bind="triggerProps"
-            :aria-label="`กำหนดส่ง: ${dueChipText(due, today)}${isPastDate(due, today) ? ' เลยมาแล้ว' : ''}`"
-          >
-            <Icon name="calendar" :size="16" />
-            <span>{{ dueChipText(due, today) }}<template v-if="isPastDate(due, today)"> เลยมาแล้ว</template></span>
-            <Icon name="chevronDown" :size="14" :stroke="3" />
-          </button>
-        </template>
-        <template #default="{ close }">
-          <DuePicker v-model="due" @pick="close()" @done="close()" />
-        </template>
-      </AnchoredPicker>
+    <div class="flex flex-wrap items-end gap-2 sm:items-center sm:gap-x-4 sm:gap-y-2.5">
+      <QuickDue v-model="due" />
 
+      <div class="flex items-center gap-2">
+        <span class="label" aria-hidden="true">ความสำคัญ</span>
       <AnchoredPicker label="ความสำคัญ">
         <template #trigger="{ triggerProps }">
           <button
@@ -101,6 +85,7 @@ defineExpose({ focus: () => input.value?.focus() })
           <PriorityPicker v-model="priority" @pick="close()" />
         </template>
       </AnchoredPicker>
+      </div>
     </div>
   </form>
 </template>

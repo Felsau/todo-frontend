@@ -25,6 +25,7 @@ const addedCount = ref(0)
 /** iOS opens the keyboard only for a focus made during the tap itself. */
 let proxy: HTMLInputElement | null = null
 
+/** Empties the whole form: when the add sheet closes or the list view goes away (P8). */
 function reset() {
   draft.value = ''
   due.value = ''
@@ -68,11 +69,13 @@ export function useAddForm() {
         reveal,
       },
     )
-    if (quiet && tempId !== undefined) {
+    if (tempId === undefined) return false // not added (no internet): the text stays
+    if (quiet) {
       lastAdded.value = { tempId, title }
       addedCount.value++
     }
-    reset()
+    // Only the title clears: the date and priority stay for the next task, as the chips show (P8).
+    draft.value = ''
     return true
   }
 

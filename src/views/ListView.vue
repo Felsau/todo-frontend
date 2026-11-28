@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, watchEffect } from 'vue'
 import AddBar from '../components/AddBar.vue'
 import AddSheet from '../components/AddSheet.vue'
 import ClearDone from '../components/ClearDone.vue'
@@ -12,13 +12,16 @@ import SearchSort from '../components/SearchSort.vue'
 import TodoCard from '../components/TodoCard.vue'
 import { useAddForm } from '../composables/useAddForm'
 import { useListUi } from '../composables/useListUi'
-import { useIsSm } from '../composables/useMedia'
+import { useIsLg, useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
+import { estimateCard, splitColumns } from '../utils/columns'
+import { isOverdue, today } from '../utils/date'
 
 const { status, total } = useTodos()
-const { groups, emptyText, searchOpen } = useListUi()
+const { groups, emptyText, noteHit } = useListUi()
 const isSm = useIsSm()
-const { sheetOpen, fabShown, openSheet } = useAddForm()
+const isLg = useIsLg()
+const { sheetOpen, fabShown, openSheet, due, priority } = useAddForm()
 
 /* Phones add through the round + button and its sheet; 640px and up keep the inline add row. */
 watchEffect(() => {
@@ -26,8 +29,25 @@ watchEffect(() => {
 })
 onBeforeUnmount(() => {
   fabShown.value = false
+  // The add row starts fresh next time (QA round 4, P8); a half typed title is kept.
+  due.value = ''
+  priority.value = 'normal'
 })
 
+/*
+ * Phones: one column of rows. From 640px the groups flow down two columns (three from 1024px)
+ * and on into the next, newspaper style, so the width is used and the list still reads top to
+ * bottom (QA round 4, P21). Every sort has headings, so the page keeps this shape (P13).
+ */
+const columns = computed(() => {
+  const n = !isSm.value ? 1 : isLg.value ? 3 : 2
+  return splitColumns(groups.value, n, (t) => {
+    let extra = 0
+    if (isOverdue(t.due_date, t.is_completed, today.value)) extra += 52
+    if (noteHit(t)) extra += 22
+    return estimateCard(t, extra)
+  })
+})
 const grid =
   'm-0 grid list-none gap-3 p-0 pr-1 pb-1 sm:grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] sm:gap-4.5 lg:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))]'
 </script>
@@ -37,15 +57,12 @@ const grid =
   <LoadError v-else-if="status === 'error'" />
 
   <template v-else>
-    <SearchSort v-if="!isSm && searchOpen" compact />
     <AddBar v-if="isSm" />
 
     <div v-if="total > 0" class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex flex-wrap items-center gap-3 max-sm:w-full">
-        <FilterBar class="max-sm:w-full" />
-        <ClearDone v-if="isSm" inline />
-      </div>
+      <FilterBar class="max-sm:w-full" />
       <SearchSort v-if="isSm" />
+      <SearchSort v-else phone class="w-full" />
     </div>
 
     <ul v-if="total === 0" :class="grid">
@@ -66,35 +83,45 @@ const grid =
         {{ emptyText }}
       </li>
     </ul>
-    <div v-else class="flex flex-col gap-5 sm:gap-6" data-card-list>
-      <section
-        v-for="g in groups"
-        :key="g.key"
-        class="flex flex-col gap-2.5 sm:gap-3"
-        :aria-labelledby="g.label ? `group-${g.key}` : undefined"
-        :data-group="g.key"
-      >
-        <h2
-          v-if="g.label"
-          :id="`group-${g.key}`"
-          class="m-0 flex items-center gap-2 text-[0.9375rem] leading-normal font-bold sm:text-[1rem]"
-          :class="g.key === 'overdue' && 'text-danger'"
+    <div v-else class="grid items-start gap-x-4.5 gap-y-6 sm:grid-cols-2 lg:grid-cols-3" data-card-list>
+      <div v-for="(col, ci) in columns" :key="ci" class="flex min-w-0 flex-col gap-6" data-column>
+        <section
+          v-for="p in col"
+          :key="p.group.key + (p.cont ? '-cont' : '')"
+          class="flex flex-col gap-2.5 sm:gap-3"
+          :aria-labelledby="`group-${p.group.key}`"
+          :data-group="p.group.key"
         >
-          {{ g.label }}
-          <span
-            class="box-border flex h-6 min-w-6 items-center justify-center rounded-full border-2 px-1.5 text-[0.75rem] font-semibold"
-            :class="g.key === 'overdue' ? 'border-danger bg-danger text-white' : 'bg-white text-ink'"
-          >
-            {{ g.items.length }}
-          </span>
-        </h2>
-        <ul :class="grid">
-          <TodoCard v-for="t in g.items" :key="t.id" :todo="t" />
-        </ul>
-      </section>
+          <div class="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+            <div
+              v-if="p.cont"
+              aria-hidden="true"
+              class="flex items-baseline gap-2 text-[0.9375rem] leading-normal font-bold sm:text-[1rem]"
+              :class="p.group.key === 'overdue' && 'text-danger'"
+            >
+              {{ p.group.label }} (ต่อ)
+            </div>
+            <h2
+              v-else
+              :id="`group-${p.group.key}`"
+              tabindex="-1"
+              class="m-0 flex scroll-mt-4 items-center gap-2 text-[0.9375rem] leading-normal font-bold focus:outline-none sm:text-[1rem]"
+              :class="p.group.key === 'overdue' && 'text-danger'"
+            >
+              <Icon v-if="p.group.key === 'overdue'" name="alert" :size="17" :stroke="2.6" />
+              {{ p.group.label }}
+              <span class="text-[0.8125rem] font-semibold" :class="p.group.key === 'overdue' ? 'text-danger' : 'text-muted'">
+                {{ p.group.count }} งาน
+              </span>
+            </h2>
+            <ClearDone v-if="p.group.key === 'done' && !p.cont" />
+          </div>
+          <ul class="m-0 flex list-none flex-col gap-3 p-0 pr-1 pb-1 sm:gap-4.5">
+            <TodoCard v-for="t in p.items" :key="t.id" :todo="t" />
+          </ul>
+        </section>
+      </div>
     </div>
-
-    <ClearDone v-if="!isSm" />
 
     <!-- Thumb reach, above the iPhone home bar, lifted over the toast (its height is --toast-lift). -->
     <button
