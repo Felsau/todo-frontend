@@ -44,7 +44,7 @@ const columns = computed(() => {
   const n = !isSm.value ? 1 : isLg.value ? 3 : 2
   return splitColumns(groups.value, n, (t) => {
     let extra = 0
-    if (isOverdue(t.due_date, t.is_completed, today.value)) extra += 42
+    if (isOverdue(t.due_date, t.is_completed, today.value, t.due_time)) extra += 42
     if (noteHit(t)) extra += 22
     return estimateCard(t, extra)
   })

@@ -5,7 +5,7 @@ import { useListUi } from '../composables/useListUi'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_LABEL, type Todo } from '../types'
-import { addDays, doneLabel, dueInfo, shortDate, today } from '../utils/date'
+import { addDays, doneLabel, dueInfo, shortDate, timeText, today } from '../utils/date'
 import Icon from './Icon.vue'
 
 /*
@@ -23,7 +23,7 @@ const { tickMessage, noteHit } = useListUi()
 const { openDetail } = useDetail()
 const isSm = useIsSm()
 
-const due = () => dueInfo(props.todo.due_date, props.todo.is_completed, today.value)
+const due = () => dueInfo(props.todo.due_date, props.todo.is_completed, today.value, props.todo.due_time ?? null)
 /** A toggle keeps one name; aria-pressed tells whether the task is done. */
 const toggleLabel = () => `ทำเครื่องหมายว่าเสร็จ: ${props.todo.title}`
 
@@ -33,7 +33,13 @@ const hit = computed(() => noteHit(props.todo))
 /** A done card shows the day it was ticked, not the day it was due (QA round 4 recheck, N1). */
 const finished = computed(() => (props.todo.is_completed ? doneLabel(props.todo.completed_at) : null))
 /** A done card also keeps its due date, small and muted, so it shows when it was due (recheck 2, M2). */
-const wasDue = computed(() => (finished.value && props.todo.due_date ? `กำหนดเดิม ${shortDate(props.todo.due_date)}` : null))
+const wasDue = computed(() =>
+  finished.value && props.todo.due_date
+    ? `กำหนดเดิม ${shortDate(props.todo.due_date)}${props.todo.due_time ? ` ${timeText(props.todo.due_time)}` : ''}`
+    : null,
+)
+/** Due today but its time has passed: moving it to today would change nothing (task times). */
+const dueToday = computed(() => props.todo.due_date === today.value)
 const moveToday = () => reschedule(props.todo.id, today.value, `ย้าย “${props.todo.title}” มาวันนี้แล้ว`)
 const moveTomorrow = () => reschedule(props.todo.id, addDays(today.value, 1), `ย้าย “${props.todo.title}” ไปพรุ่งนี้แล้ว`)
 
@@ -145,7 +151,7 @@ function onBodyClick() {
 
     <div v-if="overdue" class="col-start-2 col-end-4 flex flex-wrap items-center gap-2" data-move-row>
       <span aria-hidden="true" class="text-[0.75rem] font-semibold text-[#333]">ย้ายไป</span>
-      <button type="button" class="btn-mini" :aria-label="`ย้าย ${todo.title} มาวันนี้`" :disabled="locked[todo.id]" @click="moveToday">วันนี้</button>
+      <button v-if="!dueToday" type="button" class="btn-mini" :aria-label="`ย้าย ${todo.title} มาวันนี้`" :disabled="locked[todo.id]" @click="moveToday">วันนี้</button>
       <button type="button" class="btn-mini" :aria-label="`ย้าย ${todo.title} ไปพรุ่งนี้`" :disabled="locked[todo.id]" @click="moveTomorrow">พรุ่งนี้</button>
     </div>
   </li>
@@ -231,7 +237,7 @@ function onBodyClick() {
     </button>
     <div v-if="overdue" class="flex w-full flex-wrap items-center gap-2 pb-0.5 pl-13" data-move-row>
       <span aria-hidden="true" class="text-[0.75rem] font-semibold text-[#333]">ย้ายไป</span>
-      <button type="button" class="btn-mini" :aria-label="`ย้าย ${todo.title} มาวันนี้`" :disabled="locked[todo.id]" @click="moveToday">วันนี้</button>
+      <button v-if="!dueToday" type="button" class="btn-mini" :aria-label="`ย้าย ${todo.title} มาวันนี้`" :disabled="locked[todo.id]" @click="moveToday">วันนี้</button>
       <button type="button" class="btn-mini" :aria-label="`ย้าย ${todo.title} ไปพรุ่งนี้`" :disabled="locked[todo.id]" @click="moveTomorrow">พรุ่งนี้</button>
     </div>
   </li>

@@ -7,6 +7,8 @@ export interface Todo {
   priority: Priority
   /** Plain YYYY-MM-DD string or null. Never parsed through UTC. */
   due_date: string | null
+  /** "HH:mm" in Thai time, or null (any time that day). Only with a due_date. Older API: undefined. */
+  due_time?: string | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -23,13 +25,14 @@ export interface NewTodo {
   is_completed?: boolean
   priority?: Priority
   due_date?: string | null
+  due_time?: string | null
   notes?: string | null
   /** Only when restoring a deleted task (undo), so it keeps its place and its history. */
   created_at?: string
   completed_at?: string
 }
 
-export type TodoPatch = Partial<Pick<Todo, 'title' | 'is_completed' | 'priority' | 'due_date' | 'notes'>>
+export type TodoPatch = Partial<Pick<Todo, 'title' | 'is_completed' | 'priority' | 'due_date' | 'due_time' | 'notes'>>
 
 export type FilterKey = 'all' | 'active' | 'done' | 'overdue'
 export type SortKey = 'due' | 'priority' | 'newest'

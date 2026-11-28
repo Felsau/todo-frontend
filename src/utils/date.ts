@@ -60,10 +60,18 @@ export const bangkokDay = (d: Date = new Date()): string => fBangkokDay.format(d
 /** The device clock is not on Thai time (UTC+7), so the header says the dates are Thai. */
 export const awayFromThaiTime = () => new Date().getTimezoneOffset() !== -420
 
+const fBangkokTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+/** "HH:mm" of an instant in Thailand. */
+export const bangkokTime = (d: Date = new Date()): string => fBangkokTime.format(d)
+
 /** Reactive "today", refreshed so the app survives midnight and long-lived tabs. */
 export const today = ref(bangkokDay())
+/** Reactive Thai clock "HH:mm", so a task with a time turns overdue once that time has passed. */
+export const nowTime = ref(bangkokTime())
 
 function refreshToday() {
+  const t = bangkokTime()
+  if (t !== nowTime.value) nowTime.value = t
   const now = bangkokDay()
   if (now !== today.value) today.value = now
 }
@@ -148,15 +156,23 @@ export interface DueInfo {
   overdue: boolean
 }
 
-export function dueInfo(due: string | null, done: boolean, todayISO: string): DueInfo | null {
+/** "10:00 น." */
+export const timeText = (t: string) => `${t} น.`
+
+/** The due chip. A time is added after the day: "วันนี้ 10:00 น.", "พรุ่งนี้ 17:00 น.", "30 พ.ย. 09:30 น.". */
+export function dueInfo(due: string | null, done: boolean, todayISO: string, time: string | null = null): DueInfo | null {
   if (!due) return null
   const nice = shortDate(due)
-  if (done) return { label: nice, overdue: false }
+  const at = time ? ` ${timeText(time)}` : ''
+  if (done) return { label: nice + at, overdue: false }
   const d = diffDays(todayISO, due)
   if (d < 0) return { label: `เลยกำหนด ${nice}`, overdue: true }
-  if (d === 0) return { label: 'วันนี้', overdue: false }
-  if (d === 1) return { label: 'พรุ่งนี้', overdue: false }
-  return { label: nice, overdue: false }
+  if (d === 0) {
+    if (time && nowTime.value > time) return { label: `เลยเวลา ${timeText(time)}`, overdue: true }
+    return { label: 'วันนี้' + at, overdue: false }
+  }
+  if (d === 1) return { label: 'พรุ่งนี้' + at, overdue: false }
+  return { label: nice + at, overdue: false }
 }
 
 /**
@@ -169,9 +185,26 @@ export function doneLabel(completedAt: string | null): string | null {
   return Number.isNaN(d.getTime()) ? null : `เสร็จ ${shortDate(bangkokDay(d))}`
 }
 
-export function isOverdue(due: string | null, done: boolean, todayISO: string): boolean {
-  return !done && !!due && due < todayISO
+/**
+ * Overdue: the day has passed, or it is that day and its time has passed (10:01 for a 10:00 task).
+ * A task due today stays one of today's tasks in the yellow sticker either way.
+ */
+export function isOverdue(due: string | null, done: boolean, todayISO: string, time: string | null = null): boolean {
+  if (done || !due) return false
+  return due < todayISO || (due === todayISO && !!time && nowTime.value > time)
 }
+
+/** Sort key for a day plus an optional time: timed tasks first in time order, then the rest. */
+export const dueKey = (due: string | null, time: string | null | undefined) => `${due ?? '9999-12-31'} ${time ?? '99:99'}`
+
+/** Add forms: today's chosen time has already passed. */
+export const pastTimeHint = (time: string) => `เวลา ${time} น. ของวันนี้ผ่านมาแล้ว งานที่เพิ่มจะขึ้นว่าเลยกำหนดทันที`
+/** Today and this time has passed. */
+export const isPastTime = (due: string | null, time: string | null | undefined, todayISO: string) =>
+  !!due && due === todayISO && !!time && nowTime.value > time
+
+/** Quick times in the time picker. */
+export const QUICK_TIMES = ['09:00', '12:00', '18:00']
 
 /**
  * A due date picked before today. The task is allowed (writing down old jobs is normal), but it

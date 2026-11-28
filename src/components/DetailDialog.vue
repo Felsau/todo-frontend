@@ -7,11 +7,12 @@ import { useHistoryModal } from '../composables/useHistoryModal'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_LABEL, type Priority, type TodoPatch } from '../types'
-import { addDays, isOverdue, stamp, today } from '../utils/date'
+import { addDays, isOverdue, isPastTime, stamp, today } from '../utils/date'
 import { isBlank } from '../utils/text'
 import DuePicker from './DuePicker.vue'
 import Icon from './Icon.vue'
 import PriorityPicker from './PriorityPicker.vue'
+import TimeField from './TimeField.vue'
 
 /*
  * Edit dialog (640px and up) and bottom sheet (below 640px).
@@ -45,10 +46,12 @@ interface Draft {
   title: string
   is_completed: boolean
   due: string
+  /** "HH:mm" or '' (any time that day). */
+  time: string
   priority: Priority
   notes: string
 }
-const draft = reactive<Draft>({ title: '', is_completed: false, due: '', priority: 'normal', notes: '' })
+const draft = reactive<Draft>({ title: '', is_completed: false, due: '', time: '', priority: 'normal', notes: '' })
 /** Values the dialog opened with, so unsaved changes can be detected. */
 const original = ref<Draft>({ ...draft })
 
@@ -82,6 +85,7 @@ watch(
       title: t.title,
       is_completed: t.is_completed,
       due: t.due_date ?? '',
+      time: t.due_time ?? '',
       priority: t.priority,
       notes: t.notes ?? '',
     })
@@ -116,6 +120,8 @@ const changes = computed<TodoPatch>(() => {
   if (draft.title.trim() !== o.title.trim()) patch.title = draft.title.trim()
   if (draft.is_completed !== o.is_completed) patch.is_completed = draft.is_completed
   if (draft.due !== o.due) patch.due_date = draft.due || null
+  const time = draft.due ? draft.time : ''
+  if (time !== o.time) patch.due_time = time || null
   if (draft.priority !== o.priority) patch.priority = draft.priority
   if (draft.notes.trim() !== o.notes.trim()) patch.notes = draft.notes.trim() ? draft.notes : null
   return patch
@@ -155,6 +161,21 @@ watch(
     original.value = { ...original.value, due: v ?? '' }
   },
 )
+watch(
+  () => todo.value?.due_time,
+  (v) => {
+    if (!todo.value || draft.time !== original.value.time) return
+    draft.time = v ?? ''
+    original.value = { ...original.value, time: v ?? '' }
+  },
+)
+// No date, no time.
+watch(
+  () => draft.due,
+  (d) => {
+    if (!d) draft.time = ''
+  },
+)
 
 /** What สถานะ just did, read out inside the dialog (the page's live region is behind the modal). */
 const statusNote = ref('')
@@ -167,8 +188,25 @@ function setStatus(done: boolean) {
 
 const overdueNow = computed(() => {
   const t = todo.value
-  return !!t && draft.due === original.value.due && isOverdue(t.due_date, t.is_completed, today.value)
+  return (
+    !!t &&
+    draft.due === original.value.due &&
+    draft.time === original.value.time &&
+    isOverdue(t.due_date, t.is_completed, today.value, t.due_time ?? null)
+  )
 })
+/** A time picked while there is no date means today (the pill is always shown). */
+const draftTime = computed({
+  get: () => draft.time,
+  set: (v: string) => {
+    if (v && !draft.due) draft.due = today.value
+    draft.time = v
+  },
+})
+/** Due today and only its time has passed: "move to today" would change nothing. */
+const lateToday = computed(() => overdueNow.value && todo.value?.due_date === today.value)
+/** A time picked just now for today that has already passed (the saved one has the red box). */
+const pickedPastTime = computed(() => draft.time !== original.value.time && isPastTime(draft.due, draft.time, today.value))
 function move(days: 0 | 1) {
   const t = todo.value
   if (!t) return
@@ -245,6 +283,7 @@ const FIELD_MESSAGES: Record<string, string> = {
   title: 'ชื่องานต้องมี 1 ถึง 200 ตัวอักษร',
   notes: 'โน้ตยาวเกินไป ใส่ได้ไม่เกิน 2000 ตัวอักษร',
   due_date: 'วันที่ไม่ถูกต้อง ลองเลือกใหม่อีกครั้ง',
+  due_time: 'เวลาไม่ถูกต้อง ลองเลือกใหม่อีกครั้ง',
   priority: 'ความสำคัญไม่ถูกต้อง ลองเลือกใหม่อีกครั้ง',
 }
 
@@ -408,12 +447,21 @@ const sectionClass = toRef(() =>
               class="flex flex-wrap items-center gap-2 rounded-xl border-2 border-danger bg-[#ffe3e3] px-3 py-2 text-[#8f1d1d]"
               data-move-row
             >
-              <span class="flex-[1_1_100%] text-[0.8125rem] leading-normal font-semibold sm:flex-1">เลยกำหนดแล้ว ย้ายวันส่งได้ทันที</span>
-              <button type="button" class="btn-pill h-10 border-ink bg-white px-3 text-[0.8125rem] text-ink" @click="move(0)">ย้ายมาวันนี้</button>
+              <span class="flex-[1_1_100%] text-[0.8125rem] leading-normal font-semibold sm:flex-1">
+                {{ lateToday ? 'เลยเวลาแล้ว ย้ายไปพรุ่งนี้ได้ทันที' : 'เลยกำหนดแล้ว ย้ายวันส่งได้ทันที' }}
+              </span>
+              <button v-if="!lateToday" type="button" class="btn-pill h-10 border-ink bg-white px-3 text-[0.8125rem] text-ink" @click="move(0)">ย้ายมาวันนี้</button>
               <button type="button" class="btn-pill h-10 border-ink bg-white px-3 text-[0.8125rem] text-ink" @click="move(1)">ย้ายไปพรุ่งนี้</button>
             </div>
             <span v-if="fieldErrors.due_date" role="alert" class="text-[0.75rem] leading-normal font-semibold text-danger">
               {{ fieldErrors.due_date }}
+            </span>
+            <TimeField v-model="draftTime" :past="pickedPastTime" />
+            <p v-if="pickedPastTime" data-past-hint class="m-0 text-[0.8125rem] leading-normal font-semibold text-danger">
+              เวลา {{ draft.time }} น. ของวันนี้ผ่านมาแล้ว งานนี้จะขึ้นว่าเลยกำหนดทันที
+            </p>
+            <span v-if="fieldErrors.due_time" role="alert" class="text-[0.75rem] leading-normal font-semibold text-danger">
+              {{ fieldErrors.due_time }}
             </span>
           </div>
 

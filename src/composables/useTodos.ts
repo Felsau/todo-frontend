@@ -1,7 +1,7 @@
 import { computed, nextTick, reactive, ref } from 'vue'
 import { ApiError, todosApi } from '../api/todos'
 import type { Priority, Todo, TodoPatch } from '../types'
-import { isOverdue, today } from '../utils/date'
+import { isOverdue, nowTime, today } from '../utils/date'
 import { cardOf, flash, focusCard, focusHome, isOnScreen, neighbourOf, revealCard } from '../utils/reveal'
 import { isBlank } from '../utils/text'
 
@@ -288,7 +288,7 @@ interface AddOptions {
 
 /** Adds a task at once (optimistic) and returns its temporary id. */
 function add(
-  input: { title: string; priority: Priority; due_date: string | null },
+  input: { title: string; priority: Priority; due_date: string | null; due_time?: string | null },
   opts: AddOptions = {},
 ): number | undefined {
   const title = input.title.trim()
@@ -302,6 +302,7 @@ function add(
     is_completed: false,
     priority: input.priority,
     due_date: input.due_date,
+    due_time: input.due_date ? (input.due_time ?? null) : null,
     notes: null,
     created_at: stamp,
     updated_at: stamp,
@@ -310,7 +311,7 @@ function add(
   locked[tempId] = true
   if (!opts.quiet) void nextTick(() => announceAdded(tempId, title, opts.reveal))
   todosApi
-    .create({ title, priority: input.priority, due_date: input.due_date })
+    .create({ title, priority: input.priority, due_date: input.due_date, due_time: input.due_date ? (input.due_time ?? null) : null })
     .then((row) => {
       realIds.set(tempId, row.id)
       swapRow(tempId, row)
@@ -430,16 +431,27 @@ function toggle(id: number, opts: ToggleOptions = {}) {
   }, next)
 }
 
-/** Changes only the due date, at once, and rolls back on failure. */
-function setDue(id: number, due: string | null): boolean {
+/**
+ * Changes the due date (and with it the time, when given), at once, and rolls back on failure.
+ * time undefined keeps the task's time; a time that has already passed on the new day is dropped,
+ * so "move to today" does not land a task straight back in overdue (task times).
+ */
+function setDue(id: number, due: string | null, time?: string | null): boolean {
   const t = find(id)
-  if (!t || locked[id] || t.due_date === due) return false
+  if (!t || locked[id]) return false
+  let nextTime = time === undefined ? (t.due_time ?? null) : time
+  if (!due || (due === today.value && nextTime && nowTime.value > nextTime)) nextTime = null
+  if (t.due_date === due && (t.due_time ?? null) === nextTime) return false
   if (blockedOffline()) return false
   const prev = t.due_date
+  const prevTime = t.due_time ?? null
   t.due_date = due
+  t.due_time = nextTime
+  const patch: TodoPatch = { due_date: due }
+  if (nextTime !== prevTime) patch.due_time = nextTime
   withBusy(
     id,
-    serial(id, () => todosApi.update(id, { due_date: due })),
+    serial(id, () => todosApi.update(id, patch)),
   )
     .then((row) => {
       const cur = find(id)
@@ -453,7 +465,10 @@ function setDue(id: number, due: string | null): boolean {
         return
       }
       const cur = find(id)
-      if (cur && cur.due_date === due) cur.due_date = prev
+      if (cur && cur.due_date === due) {
+        cur.due_date = prev
+        cur.due_time = prevTime
+      }
       showToast('error', MSG.move)
     })
   return true
@@ -465,9 +480,10 @@ function setDue(id: number, due: string | null): boolean {
  */
 function reschedule(id: number, due: string, message: string): boolean {
   const prev = find(id)?.due_date ?? null
+  const prevTime = find(id)?.due_time ?? null
   if (!setDue(id, due)) return false
   offerChange(message, () => {
-    if (find(id)?.due_date === due && setDue(id, prev)) say('เลิกทำแล้ว')
+    if (find(id)?.due_date === due && setDue(id, prev, prevTime)) say('เลิกทำแล้ว')
   })
   return true
 }
@@ -549,6 +565,7 @@ async function undoRemove({ todo, index, request }: Removal): Promise<number | n
       is_completed: todo.is_completed,
       priority: todo.priority,
       due_date: todo.due_date,
+      due_time: todo.due_time ?? null,
       notes: todo.notes,
     }
     const times = {
@@ -648,7 +665,7 @@ const todayProgress = computed(() => {
   return { total: scope.length, done: scope.filter((t) => t.is_completed).length }
 })
 const overdueCount = computed(
-  () => todos.value.filter((t) => isOverdue(t.due_date, t.is_completed, today.value)).length,
+  () => todos.value.filter((t) => isOverdue(t.due_date, t.is_completed, today.value, t.due_time)).length,
 )
 
 export function useTodos() {

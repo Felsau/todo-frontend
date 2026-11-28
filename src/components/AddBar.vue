@@ -2,12 +2,13 @@
 import { computed, ref } from 'vue'
 import { useAddForm } from '../composables/useAddForm'
 import { PRIORITY_HEX, PRIORITY_LABEL } from '../types'
-import { PAST_HINT_ID, isPastDate, pastAddHint, today } from '../utils/date'
+import { PAST_HINT_ID, isPastDate, isPastTime, pastAddHint, pastTimeHint, today } from '../utils/date'
 import { isBlank } from '../utils/text'
 import AnchoredPicker from './AnchoredPicker.vue'
 import Icon from './Icon.vue'
 import PriorityPicker from './PriorityPicker.vue'
 import QuickDue from './QuickDue.vue'
+import TimeField from './TimeField.vue'
 
 /*
  * The add form: inline above the list from 640px, and inside the phone add sheet (sheet=true).
@@ -16,8 +17,19 @@ import QuickDue from './QuickDue.vue'
  */
 const props = defineProps<{ sheet?: boolean }>()
 
-const { draft, due, priority, submit: send } = useAddForm()
-const pastDue = computed(() => isPastDate(due.value, today.value))
+const { draft, due, time, priority, submit: send } = useAddForm()
+const pastDay = computed(() => isPastDate(due.value, today.value))
+/** Today with a time that has gone counts as past too (task times). */
+const pastClock = computed(() => isPastTime(due.value, time.value, today.value))
+const pastDue = computed(() => pastDay.value || pastClock.value)
+/* The time pill is always there, so picking a date does not shift the row; a time picked with no date means today. */
+const timeModel = computed({
+  get: () => time.value,
+  set: (v: string) => {
+    if (v && !due.value) due.value = today.value
+    time.value = v
+  },
+})
 const input = ref<HTMLInputElement | null>(null)
 
 function submit() {
@@ -64,6 +76,7 @@ defineExpose({ focus: () => input.value?.focus() })
 
     <div class="flex flex-wrap items-end gap-2 sm:items-center sm:gap-x-4 sm:gap-y-2.5">
       <QuickDue v-model="due" />
+      <TimeField v-model="timeModel" :past="pastClock" />
 
       <div class="flex items-center gap-2">
         <span class="label" aria-hidden="true">ความสำคัญ</span>
@@ -96,7 +109,7 @@ defineExpose({ focus: () => input.value?.focus() })
       :data-past-hint="pastDue ? '' : undefined"
       class="m-0 text-[0.8125rem] leading-snug font-semibold text-danger max-sm:min-h-[1.3rem] sm:absolute sm:inset-x-4 sm:bottom-2.5"
     >
-      {{ pastDue ? pastAddHint(due) : '' }}
+      {{ pastDay ? pastAddHint(due) : pastClock ? pastTimeHint(time) : '' }}
     </p>
   </form>
 </template>

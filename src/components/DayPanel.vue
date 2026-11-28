@@ -5,11 +5,12 @@ import { useDetail } from '../composables/useDetail'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_HEX, PRIORITY_LABEL, type Priority, type Todo } from '../types'
-import { dayMonthLong, diffDays, doneLabel, isOverdue, isPastDate, shortDate, today, weekdayName } from '../utils/date'
+import { dueKey, isPastTime, pastTimeHint, timeText, dayMonthLong, diffDays, doneLabel, isOverdue, isPastDate, shortDate, today, weekdayName } from '../utils/date'
 import { isBlank } from '../utils/text'
 import AnchoredPicker from './AnchoredPicker.vue'
 import Icon from './Icon.vue'
 import PriorityPicker from './PriorityPicker.vue'
+import TimeField from './TimeField.vue'
 
 /*
  * The selected day: its add form and its tasks (side panel on desktop, agenda on mobile).
@@ -58,7 +59,7 @@ const emptyText = computed(() =>
 const allUpcoming = computed(() =>
   todos.value
     .filter((t) => !t.is_completed && t.due_date && t.due_date > props.selected)
-    .sort((a, b) => (a.due_date! < b.due_date! ? -1 : a.due_date! > b.due_date! ? 1 : 0)),
+    .sort((a, b) => (dueKey(a.due_date, a.due_time) < dueKey(b.due_date, b.due_time) ? -1 : 1)),
 )
 /** Only the first three; the heading says so when there are more (round 6, L6). */
 const upcoming = computed(() => allUpcoming.value.slice(0, 3))
@@ -67,25 +68,31 @@ const upcoming = computed(() => allUpcoming.value.slice(0, 3))
  * being added, not the tasks listed below (round 6, M2).
  */
 const pastText = computed(() => `วันที่ ${nice.value} ผ่านมาแล้ว งานที่เพิ่มลงวันนั้นจะขึ้นว่าเลยกำหนดทันที`)
-const pastHint = computed(() => (past.value && !isBlank(draft.value) ? pastText.value : ''))
+const pastClock = computed(() => isPastTime(props.selected, time.value, today.value))
+const pastHint = computed(() =>
+  past.value && !isBlank(draft.value) ? pastText.value : pastClock.value ? pastTimeHint(time.value) : '',
+)
 
 /* add form: the new todo gets the selected day as its due date */
 const draft = ref('')
 const priority = ref<Priority>('normal')
+/** "HH:mm" or '' for the task being added to the selected day. */
+const time = ref('')
 const input = ref<HTMLInputElement | null>(null)
 
 function submit() {
   const t = draft.value.trim()
   if (isBlank(t)) return
-  const sent = { title: t, priority: priority.value }
+  const sent = { title: t, priority: priority.value, time: time.value }
   const id = add(
-    { title: t, priority: sent.priority, due_date: props.selected },
+    { title: t, priority: sent.priority, due_date: props.selected, due_time: sent.time || null },
     {
       // A failed add puts the typed values back, unless the box is already in use again (R2-05).
       restore: () => {
         if (draft.value.trim() !== '') return false
         draft.value = sent.title
         priority.value = sent.priority
+        time.value = sent.time
         return true
       },
     },
@@ -96,7 +103,7 @@ function submit() {
   input.value?.focus()
 }
 
-const overdue = (t: Todo) => isOverdue(t.due_date, t.is_completed, today.value)
+const overdue = (t: Todo) => isOverdue(t.due_date, t.is_completed, today.value, t.due_time ?? null)
 /* The boxes for tasks that are not of the selected day: dashed, on the paper colour. */
 const box = 'flex flex-col gap-2 rounded-2xl border-2 border-dashed bg-paper p-2.5 sm:bg-off'
 const row = 'box-border flex items-center gap-1.5 rounded-xl border-2 bg-white p-1'
@@ -163,6 +170,7 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
             <PriorityPicker v-model="priority" @pick="close()" />
           </template>
         </AnchoredPicker>
+        <TimeField v-model="time" :past="pastClock" compact />
       </div>
       <!-- No room kept for it before typing: an always empty band looks like a broken box (owner check 2026-11-28, round 6 N6). -->
       <p v-if="pastHint" id="day-past-hint" role="status" data-past-hint class="m-0 text-[0.8125rem] leading-normal font-semibold text-danger">{{ pastHint }}</p>
@@ -210,6 +218,9 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
               {{ t.title }}
             </span>
             <span class="flex flex-wrap items-center gap-1.5">
+              <span v-if="t.due_time" class="inline-flex items-center gap-1 text-[0.75rem] font-bold" data-day-time>
+                <Icon name="clock" :size="12" :stroke="2.8" />{{ timeText(t.due_time) }}
+              </span>
               <span class="text-[0.75rem] font-semibold">{{ PRIORITY_LABEL[t.priority] }}</span>
               <span
                 v-if="t.is_completed && doneLabel(t.completed_at)"
@@ -223,7 +234,7 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
                 v-if="overdue(t)"
                 class="inline-block rounded-md border-2 bg-danger px-2 py-px text-[0.75rem] font-semibold text-white"
               >
-                เลยกำหนด
+                {{ t.due_date === today ? 'เลยเวลา' : 'เลยกำหนด' }}
               </span>
             </span>
           </span>
@@ -293,7 +304,7 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
             class="flex-none rounded-full border-2 px-2 text-[0.75rem] font-semibold"
             :class="isOverdue(u.due_date, false, today) ? 'border-danger bg-danger text-white' : 'bg-white'"
           >
-            <span v-if="isOverdue(u.due_date, false, today)" class="sr-only">เลยกำหนด </span>{{ shortDate(u.due_date!) }}
+            <span v-if="isOverdue(u.due_date, false, today)" class="sr-only">เลยกำหนด </span>{{ shortDate(u.due_date!) }}{{ u.due_time ? ` ${u.due_time}` : '' }}
           </span>
         </button>
       </div>

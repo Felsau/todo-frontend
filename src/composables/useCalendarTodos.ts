@@ -15,6 +15,10 @@ export function useCalendarTodos() {
     const da = effDone(a)
     const db = effDone(b)
     if (da !== db) return da ? 1 : -1
+    // Within a day: timed tasks first in time order, then the rest (task times).
+    const ta = a.due_time ?? '99:99'
+    const tb = b.due_time ?? '99:99'
+    if (ta !== tb) return ta < tb ? -1 : 1
     return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || a.id - b.id
   }
 
@@ -36,14 +40,14 @@ export function useCalendarTodos() {
   /** Chip colours: overdue is red with white text, done is white, otherwise the priority colour. */
   function chipClass(t: Todo): string {
     if (t.is_completed) return 'bg-white text-ink line-through'
-    if (isOverdue(t.due_date, false, today.value)) return 'bg-danger text-white'
+    if (isOverdue(t.due_date, false, today.value, t.due_time)) return 'bg-danger text-white'
     return `${PRIORITY_BG[t.priority]} text-ink`
   }
 
   /** Dot colour for the mobile week strip. */
   function dotClass(t: Todo): string {
     if (t.is_completed) return 'bg-white'
-    if (isOverdue(t.due_date, false, today.value)) return 'bg-danger'
+    if (isOverdue(t.due_date, false, today.value, t.due_time)) return 'bg-danger'
     return PRIORITY_BG[t.priority]
   }
 

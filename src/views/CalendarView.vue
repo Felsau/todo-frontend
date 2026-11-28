@@ -240,9 +240,9 @@ const navBtn =
                   ? 'h-7 whitespace-nowrap lg:line-clamp-2 lg:h-auto lg:max-h-13 lg:whitespace-normal lg:break-words'
                   : 'h-7 whitespace-nowrap',
               ]"
-              :title="t.title"
+              :title="t.due_time ? `${t.due_time} น. ${t.title}` : t.title"
             >
-              {{ t.title }}
+              <span v-if="t.due_time" class="mr-1 font-bold">{{ t.due_time }}</span>{{ t.title }}
             </span>
             <span v-if="on(c.iso).length > 2" class="pl-0.5 text-[0.75rem] font-semibold">
               +{{ on(c.iso).length - 2 }} {{ moreUnit(on(c.iso).slice(2)) }}

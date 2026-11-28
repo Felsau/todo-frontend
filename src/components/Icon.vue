@@ -19,6 +19,7 @@ const PATHS = {
   link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
   serverOff: 'M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01M12 11v2',
   alert: 'M12 3l10 18H2zM12 10v5M12 18h.01',
+  clock: 'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM12 7v5l3 2',
 } as const
 
 export type IconName = keyof typeof PATHS

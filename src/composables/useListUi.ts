@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { PRIORITY_LABEL, PRIORITY_RANK, type FilterKey, type SortKey, type Todo } from '../types'
-import { addDays, bangkokDay, isOverdue, today } from '../utils/date'
+import { addDays, bangkokDay, dueKey, isOverdue, today } from '../utils/date'
 import { useTodos } from './useTodos'
 
 /* Filter, search and sort state of the list view. All of it runs in the browser. */
@@ -26,7 +26,7 @@ export const SORTS: { key: SortKey; label: string }[] = [
 function matches(done: boolean, t: Todo, f: FilterKey): boolean {
   if (f === 'active') return !done
   if (f === 'done') return done
-  if (f === 'overdue') return isOverdue(t.due_date, done, today.value)
+  if (f === 'overdue') return isOverdue(t.due_date, done, today.value, t.due_time)
   return true
 }
 
@@ -74,9 +74,10 @@ export const GROUP_LABEL: Record<GroupKey, string> = {
 }
 
 const FAR = '9999-12-31'
+/** By day, then by time within a day (timed tasks first), then undated last. */
 const byDue = (a: Todo, b: Todo) => {
-  const x = a.due_date ?? FAR
-  const y = b.due_date ?? FAR
+  const x = a.due_date ? dueKey(a.due_date, a.due_time) : FAR
+  const y = b.due_date ? dueKey(b.due_date, b.due_time) : FAR
   return x < y ? -1 : x > y ? 1 : 0
 }
 /** Rows that are still being created count as the newest. */

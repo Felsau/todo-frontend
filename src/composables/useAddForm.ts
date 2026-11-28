@@ -1,7 +1,7 @@
-import { nextTick, ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import type { Priority } from '../types'
 import { revealCard } from '../utils/reveal'
-import { isPastDate, today } from '../utils/date'
+import { isPastDate, nowTime, today } from '../utils/date'
 import { isBlank } from '../utils/text'
 import { useListUi } from './useListUi'
 import { useTodos } from './useTodos'
@@ -13,6 +13,8 @@ import { useTodos } from './useTodos'
 
 const draft = ref('')
 const due = ref('')
+/** "HH:mm" or '' (any time). Only used with a date. */
+const time = ref('')
 const priority = ref<Priority>('normal')
 
 /** The phone add sheet is open. */
@@ -30,8 +32,13 @@ let proxy: HTMLInputElement | null = null
 function reset() {
   draft.value = ''
   due.value = ''
+  time.value = ''
   priority.value = 'normal'
 }
+// No date, no time (ไม่มีกำหนดส่ง clears both).
+watch(due, (d) => {
+  if (!d) time.value = ''
+})
 
 export function useAddForm() {
   const { add } = useTodos()
@@ -48,9 +55,9 @@ export function useAddForm() {
   function submit(quiet = false): boolean {
     const title = draft.value.trim()
     if (isBlank(title)) return false
-    const sent = { title, due: due.value, priority: priority.value }
+    const sent = { title, due: due.value, time: due.value ? time.value : '', priority: priority.value }
     const tempId = add(
-      { title, priority: sent.priority, due_date: sent.due || null },
+      { title, priority: sent.priority, due_date: sent.due || null, due_time: sent.time || null },
       {
         quiet,
         // A failed add puts the typed values back, unless the box is already in use again (R2-05).
@@ -58,6 +65,7 @@ export function useAddForm() {
           if (draft.value.trim() !== '') return false
           draft.value = sent.title
           due.value = sent.due
+          time.value = sent.time
           priority.value = sent.priority
           if (lastAdded.value && lastAdded.value.tempId === tempId) {
             lastAdded.value = null
@@ -79,6 +87,7 @@ export function useAddForm() {
     draft.value = ''
     // A date that has passed is not carried to the next task (recheck 2, M3).
     if (isPastDate(due.value, today.value)) due.value = ''
+    if (due.value === today.value && time.value && nowTime.value > time.value) time.value = ''
     return true
   }
 
@@ -101,5 +110,5 @@ export function useAddForm() {
     proxy = null
   }
 
-  return { draft, due, priority, sheetOpen, fabShown, lastAdded, addedCount, submit, reset, reveal, openSheet, dropProxy }
+  return { draft, due, time, priority, sheetOpen, fabShown, lastAdded, addedCount, submit, reset, reveal, openSheet, dropProxy }
 }
