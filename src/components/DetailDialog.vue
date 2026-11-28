@@ -396,7 +396,7 @@ const sectionClass = toRef(() =>
           <div class="flex flex-col gap-2">
             <span :id="ids.due" class="label">กำหนดส่ง</span>
             <div role="group" :aria-labelledby="ids.due" class="flex">
-              <DuePicker v-model="draft.due" variant="inline" :done="draft.is_completed" />
+              <DuePicker v-model="draft.due" :done="draft.is_completed" />
             </div>
             <div
               v-if="overdueNow"

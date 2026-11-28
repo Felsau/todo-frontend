@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
-import { PAST_HINT_ID, addDays, isPastDate, shortDate, today } from '../utils/date'
+import { PAST_HINT_ID, addDays, fullShortDate, isPastDate, shortDate, today } from '../utils/date'
 import Icon from './Icon.vue'
+import ThaiDatePicker from './ThaiDatePicker.vue'
 
 /*
  * One tap due dates for a new task: ไม่มีกำหนดส่ง, วันนี้, พรุ่งนี้, อีก 7 วัน and เลือกวัน, in one
- * row of the same shape, each date with the real date under it, so nobody has to work out what
+ * row of the same shape (เลือกวัน opens the app's Thai calendar, not the browser's), each date with the real date under it, so nobody has to work out what
  * "อีก 7 วัน" means. A new task still has no due date until one is tapped; the first option shows
  * that and takes the date off again (QA round 4, P7, P9, U4, owner decision 2; recheck, N6).
  */
 const model = defineModel<string>({ required: true })
 const labelId = useId()
-const inputId = useId()
 const hintId = PAST_HINT_ID
 
 const quick = computed(() => [
@@ -25,14 +25,6 @@ const past = computed(() => isPastDate(model.value, today.value))
 
 function choose(value: string) {
   model.value = value
-}
-
-function openPicker(e: Event) {
-  try {
-    ;(e.target as HTMLInputElement).showPicker?.()
-  } catch {
-    /* showPicker needs a user gesture; ignore when not allowed */
-  }
 }
 
 const opt =
@@ -66,30 +58,26 @@ const opt =
         <span class="text-[0.8125rem] max-[22.5rem]:text-[0.75rem]">{{ o.label }}</span>
         <span class="text-[0.6875rem] text-[#333]">{{ shortDate(o.value) }}</span>
       </button>
-      <span
-        class="relative focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-focus"
-        :class="[opt, past ? 'border-danger bg-[#ffe3e3] text-[#8f1d1d]' : custom ? 'bg-accent shadow-brutal-sm' : 'bg-white']"
-        :data-date-pill="custom ? 'selected' : undefined"
-      >
-        <span class="flex items-center gap-1 text-[0.8125rem] max-[22.5rem]:text-[0.75rem] whitespace-nowrap" aria-hidden="true">
-          <Icon :name="custom ? 'check' : 'calendar'" :size="13" :stroke="custom ? 3.5 : 2.6" class="max-[22.5rem]:hidden" />
-          เลือกวัน
-        </span>
-        <span class="text-[0.6875rem]" :class="!custom && 'text-[#333]'" aria-hidden="true">
-          {{ custom ? shortDate(model) : 'วันอื่น' }}
-        </span>
-        <label :for="inputId" class="sr-only">เลือกวัน</label>
-        <input
-          :id="inputId"
-          type="date"
-          :value="custom ? model : ''"
-          :aria-describedby="past ? hintId : undefined"
-          class="absolute inset-0 size-full cursor-pointer text-[1rem] opacity-0"
-          @click="openPicker"
-          @keydown.enter.prevent="openPicker"
-          @change="model = ($event.target as HTMLInputElement).value"
-        />
-      </span>
+      <ThaiDatePicker v-model="model" class="flex min-w-0">
+        <template #trigger="{ triggerProps }">
+          <button
+            type="button"
+            v-bind="triggerProps"
+            :class="[opt, 'w-full', past ? 'border-danger bg-[#ffe3e3] text-[#8f1d1d]' : custom ? 'bg-accent shadow-brutal-sm' : 'bg-white']"
+            :data-date-pill="custom ? 'selected' : undefined"
+            :aria-label="custom ? `เลือกวัน ${fullShortDate(model)}` : 'เลือกวัน วันอื่น'"
+            :aria-describedby="past ? hintId : undefined"
+          >
+            <span class="flex items-center gap-1 text-[0.8125rem] max-[22.5rem]:text-[0.75rem] whitespace-nowrap" aria-hidden="true">
+              <Icon :name="custom ? 'check' : 'calendar'" :size="13" :stroke="custom ? 3.5 : 2.6" class="max-[22.5rem]:hidden" />
+              เลือกวัน
+            </span>
+            <span class="text-[0.6875rem]" :class="!custom && 'text-[#333]'" aria-hidden="true">
+              {{ custom ? shortDate(model) : 'วันอื่น' }}
+            </span>
+          </button>
+        </template>
+      </ThaiDatePicker>
     </div>
   </div>
 </template>

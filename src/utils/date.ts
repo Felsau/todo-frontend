@@ -23,6 +23,19 @@ export function addDays(iso: string, n: number): string {
   return toISO(d)
 }
 
+/** Same day n months later, kept inside the shorter month (31 Jan plus 1 month is 28 or 29 Feb). */
+export function addMonths(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const last = new Date(y, m - 1 + n + 1, 0).getDate()
+  return toISO(new Date(y, m - 1 + n, Math.min(d, last)))
+}
+
+/** Last day of the month of iso. */
+export function monthEnd(iso: string): string {
+  const [y, m] = iso.split('-').map(Number)
+  return toISO(new Date(y, m, 0))
+}
+
 /** Whole days from a to b (b minus a), immune to DST shifts. */
 export function diffDays(a: string, b: string): number {
   const [ay, am, ad] = a.split('-').map(Number)
