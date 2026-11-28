@@ -283,7 +283,11 @@ const navBtn =
               </span>
             </span>
             <span class="h-3 text-[0.625rem] leading-3 font-bold whitespace-nowrap" data-dot-more>
-              <template v-if="dotsOf(iso).more">+{{ dotsOf(iso).more }} {{ moreUnit(on(iso).slice(2)) }}</template>
+              <template v-if="dotsOf(iso).more">
+                <!-- Phone cells are 38 px wide at 320: the word does not fit, so a check mark (as in the legend) stands for เสร็จแล้ว. -->
+                <span aria-hidden="true" class="inline-flex items-center gap-0.5">+{{ dotsOf(iso).more }}<Icon v-if="moreUnit(on(iso).slice(2)) === 'เสร็จแล้ว'" name="check" :size="9" :stroke="5" /></span>
+                <span class="sr-only">อีก {{ dotsOf(iso).more }} {{ moreUnit(on(iso).slice(2)) }}</span>
+              </template>
             </span>
           </span>
         </button>
