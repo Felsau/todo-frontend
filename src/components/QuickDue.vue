@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
-import { PAST_DATE_HINT, addDays, isPastDate, shortDate, today } from '../utils/date'
+import { PAST_HINT_ID, addDays, isPastDate, shortDate, today } from '../utils/date'
 import Icon from './Icon.vue'
 
 /*
@@ -12,7 +12,7 @@ import Icon from './Icon.vue'
 const model = defineModel<string>({ required: true })
 const labelId = useId()
 const inputId = useId()
-const hintId = useId()
+const hintId = PAST_HINT_ID
 
 const quick = computed(() => [
   { value: today.value, label: 'วันนี้' },
@@ -91,8 +91,5 @@ const opt =
         />
       </span>
     </div>
-    <p v-if="past" :id="hintId" data-past-hint class="m-0 w-full text-[0.8125rem] leading-normal font-semibold text-danger">
-      {{ PAST_DATE_HINT }}
-    </p>
   </div>
 </template>

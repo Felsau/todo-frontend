@@ -158,6 +158,8 @@ export function isPastDate(due: string | null, todayISO: string): boolean {
 }
 
 /** The red hint under a date picker when the chosen date has already passed. */
+/** id of the hint line under the add form's date row (the date buttons point at it). */
+export const PAST_HINT_ID = 'add-past-hint'
 export const PAST_DATE_HINT = 'วันที่เลือกผ่านมาแล้ว งานนี้จะขึ้นว่าเลยกำหนดทันที'
 
 /** The four quick options of the shared due picker. */

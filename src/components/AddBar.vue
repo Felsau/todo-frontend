@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useAddForm } from '../composables/useAddForm'
 import { PRIORITY_HEX, PRIORITY_LABEL } from '../types'
+import { PAST_DATE_HINT, PAST_HINT_ID, isPastDate, today } from '../utils/date'
 import { isBlank } from '../utils/text'
 import AnchoredPicker from './AnchoredPicker.vue'
 import Icon from './Icon.vue'
@@ -16,6 +17,7 @@ import QuickDue from './QuickDue.vue'
 const props = defineProps<{ sheet?: boolean }>()
 
 const { draft, due, priority, submit: send } = useAddForm()
+const pastDue = computed(() => isPastDate(due.value, today.value))
 const input = ref<HTMLInputElement | null>(null)
 
 function submit() {
@@ -27,7 +29,7 @@ defineExpose({ focus: () => input.value?.focus() })
 
 <template>
   <form
-    class="flex flex-col gap-2.5 sm:gap-3 sm:rounded-2xl sm:border-2 sm:bg-white sm:p-3.5 sm:shadow-brutal"
+    class="relative flex flex-col gap-2.5 sm:gap-3 sm:rounded-2xl sm:border-2 sm:bg-white sm:p-3.5 sm:shadow-brutal"
     @submit.prevent="submit"
   >
     <!-- Wraps only when the browser font size is very large, so the box keeps room for its text (UI 5). -->
@@ -87,5 +89,13 @@ defineExpose({ focus: () => input.value?.focus() })
       </AnchoredPicker>
       </div>
     </div>
+    <!-- Its own line that never moves the row above: kept free in the phone sheet, in the gap under the box from 640px (recheck 2, M3). -->
+    <p
+      :id="PAST_HINT_ID"
+      :data-past-hint="pastDue ? '' : undefined"
+      class="m-0 text-[0.8125rem] leading-snug font-semibold text-danger max-sm:min-h-[1.3rem] sm:absolute sm:inset-x-1 sm:top-full sm:mt-1"
+    >
+      {{ pastDue ? PAST_DATE_HINT : '' }}
+    </p>
   </form>
 </template>

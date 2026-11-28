@@ -1,6 +1,7 @@
 import { nextTick, ref } from 'vue'
 import type { Priority } from '../types'
 import { revealCard } from '../utils/reveal'
+import { isPastDate, today } from '../utils/date'
 import { isBlank } from '../utils/text'
 import { useListUi } from './useListUi'
 import { useTodos } from './useTodos'
@@ -76,6 +77,8 @@ export function useAddForm() {
     }
     // Only the title clears: the date and priority stay for the next task, as the chips show (P8).
     draft.value = ''
+    // A date that has passed is not carried to the next task (recheck 2, M3).
+    if (isPastDate(due.value, today.value)) due.value = ''
     return true
   }
 

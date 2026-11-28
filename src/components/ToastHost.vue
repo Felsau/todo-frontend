@@ -21,7 +21,7 @@ const isSm = useIsSm()
 
 const box = ref<HTMLElement | null>(null)
 const actionBtn = ref<HTMLButtonElement | null>(null)
-const atTop = computed(() => detailId.value !== null || (sheetOpen.value && !isSm.value))
+const atTop = computed(() => detailId.value !== null || (sheetOpen.value && !isSm.value) || (!!toast.value?.top && !isSm.value))
 
 /* Room the floating buttons leave for the toast: its height plus a 12px gap, or nothing. */
 let lastLift = 0
@@ -55,6 +55,13 @@ function act() {
   actedId = t.id
   dismissToast()
   t.onAction?.()
+}
+
+function closeX() {
+  const t = toast.value
+  actedId = t?.id ?? null
+  dismissToast()
+  letGo(t)
 }
 
 function letGo(t: Toast | null | undefined) {
@@ -129,7 +136,7 @@ function onKeydown(e: KeyboardEvent) {
       @keydown="onKeydown"
     >
       <Icon v-if="toast.kind === 'saved' || toast.kind === 'added' || toast.kind === 'change'" name="check" :size="16" :stroke="3" />
-      <span class="min-w-0 flex-1 wrap-anywhere" :class="!toast.actionLabel && toast.kind !== 'error' && 'pr-3'">
+      <span class="min-w-0 flex-1 wrap-anywhere" :class="!toast.actionLabel && toast.kind !== 'error' && 'pr-1'">
         {{ toast.message }}
       </span>
       <button
@@ -150,6 +157,17 @@ function onKeydown(e: KeyboardEvent) {
         @click="dismissToast"
       >
         ปิด
+      </button>
+      <!-- A small X on every toast that has an action or stays a few seconds (recheck 2, M4). -->
+      <button
+        v-if="toast.actionLabel || toast.kind !== 'error'"
+        type="button"
+        data-toast-close
+        class="flex size-11 flex-none items-center justify-center rounded-[10px] border-0 bg-transparent p-0 text-white"
+        aria-label="ปิดข้อความ"
+        @click="closeX"
+      >
+        <Icon name="close" :size="16" :stroke="3" />
       </button>
     </div>
   </div>

@@ -5,7 +5,7 @@ import { useListUi } from '../composables/useListUi'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_LABEL, type Todo } from '../types'
-import { addDays, doneLabel, dueInfo, today } from '../utils/date'
+import { addDays, doneLabel, dueInfo, shortDate, today } from '../utils/date'
 import Icon from './Icon.vue'
 
 /*
@@ -32,6 +32,8 @@ const overdue = computed(() => !!due()?.overdue)
 const hit = computed(() => noteHit(props.todo))
 /** A done card shows the day it was ticked, not the day it was due (QA round 4 recheck, N1). */
 const finished = computed(() => (props.todo.is_completed ? doneLabel(props.todo.completed_at) : null))
+/** A done card also keeps its due date, small and muted, so it shows when it was due (recheck 2, M2). */
+const wasDue = computed(() => (finished.value && props.todo.due_date ? `กำหนด ${shortDate(props.todo.due_date)}` : null))
 const moveToday = () => reschedule(props.todo.id, today.value, `ย้าย “${props.todo.title}” มาวันนี้แล้ว`)
 const moveTomorrow = () => reschedule(props.todo.id, addDays(today.value, 1), `ย้าย “${props.todo.title}” ไปพรุ่งนี้แล้ว`)
 
@@ -121,7 +123,14 @@ function onBodyClick() {
         {{ finished }}
       </span>
       <span
-        v-else-if="due()"
+        v-if="wasDue"
+        data-was-due-chip
+        class="box-border inline-flex min-h-7 items-center rounded-full border-2 border-[#8a8780] bg-white px-2.5 text-[0.75rem] font-medium whitespace-nowrap text-[#555]"
+      >
+        {{ wasDue }}
+      </span>
+      <span
+        v-else-if="due() && !finished"
         class="box-border inline-flex min-h-7 items-center gap-1.5 rounded-full border-2 px-2.5 text-[0.75rem] font-semibold whitespace-nowrap"
         :class="due()!.overdue ? 'bg-danger text-white' : 'bg-white text-ink'"
       >
@@ -190,7 +199,14 @@ function onBodyClick() {
             {{ finished }}
           </span>
           <span
-            v-else-if="due()"
+            v-if="wasDue"
+            data-was-due-chip
+            class="box-border inline-flex min-h-7 items-center rounded-full border-2 border-[#8a8780] bg-white px-2 text-[0.75rem] font-medium whitespace-nowrap text-[#555]"
+          >
+            {{ wasDue }}
+          </span>
+          <span
+            v-else-if="due() && !finished"
             class="box-border inline-flex min-h-7 items-center gap-1 rounded-full border-2 px-2 text-[0.75rem] font-semibold whitespace-nowrap"
             :class="due()!.overdue ? 'bg-danger text-white' : 'bg-white text-ink'"
           >

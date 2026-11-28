@@ -49,6 +49,8 @@ export interface ListGroup {
   items: Todo[]
   /** Tasks that really belong here (a ticked card may still be settling in its old group). */
   count: number
+  /** The number after the heading: today's group counts all tasks due today, like the yellow sticker (recheck 2, M1). */
+  countText: string
 }
 
 /*
@@ -118,7 +120,7 @@ export interface NoteHit {
 }
 
 export function useListUi() {
-  const { todos, effDone } = useTodos()
+  const { todos, effDone, todayProgress } = useTodos()
 
   const counts = computed(() => {
     const out: Record<FilterKey, number> = { all: 0, active: 0, done: 0, overdue: 0 }
@@ -161,7 +163,12 @@ export function useListUi() {
       else if (s === 'priority') items.sort((a, b) => byDue(a, b) || a.id - b.id)
       else items.sort(byNewest)
       const count = items.filter((t) => t.is_completed === (key === 'done')).length
-      out.push({ key, label: GROUP_LABEL[key], items, count })
+      let countText = `${count} งาน`
+      if (key === 'today' && s === 'due') {
+        const { done, total } = todayProgress.value
+        if (done > 0) countText = `ค้าง ${total - done} จาก ${total} งาน`
+      }
+      out.push({ key, label: GROUP_LABEL[key], items, count, countText })
     }
     return out
   })

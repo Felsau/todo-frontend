@@ -103,7 +103,7 @@ const grid =
               <Icon v-if="g.key === 'overdue'" name="alert" :size="17" :stroke="2.6" />
               {{ g.label }}
               <span class="text-[0.8125rem] font-semibold" :class="g.key === 'overdue' ? 'text-danger' : 'text-muted'">
-                {{ g.count }} งาน
+                {{ g.countText }}
               </span>
             </h2>
             <ClearDone v-if="g.key === 'done'" />

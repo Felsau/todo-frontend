@@ -29,6 +29,8 @@ export interface Toast {
   autofocus?: boolean
   /** Where keyboard focus goes when the toast lets go of it (Tab, Esc, timeout). */
   returnFocus?: () => void
+  /** Show at the top on phones, because the card that moved lands at the bottom (recheck 2, M4). */
+  top?: boolean
 }
 
 /* A delete stays undoable for 8 s: 5 s was too short while scrolling (QA round 4, P15). */
@@ -114,7 +116,7 @@ function armTimer() {
 function showToast(
   kind: ToastKind,
   message: string,
-  extra: Pick<Toast, 'actionLabel' | 'onAction' | 'autofocus' | 'returnFocus'> = {},
+  extra: Pick<Toast, 'actionLabel' | 'onAction' | 'autofocus' | 'returnFocus' | 'top'> = {},
 ) {
   if (kind !== 'undo') undoBatch = []
   toastHeld = false
@@ -354,12 +356,12 @@ function announceAdded(tempId: number, title: string, reveal?: (id: number) => v
  * A tick or a date move can be undone from its toast. It never pushes away the chance to undo
  * a delete: then only screen readers hear it (QA round 4, owner decision 4).
  */
-function offerChange(message: string, undo: () => void) {
+function offerChange(message: string, undo: () => void, top = false) {
   if (toast.value?.kind === 'undo') {
     say(message)
     return
   }
-  showToast('change', message, { actionLabel: 'เลิกทำ', onAction: undo })
+  showToast('change', message, { actionLabel: 'เลิกทำ', onAction: undo, top })
 }
 
 export interface ToggleOptions {
@@ -416,7 +418,7 @@ function toggle(id: number, opts: ToggleOptions = {}) {
       toggle(id, { quiet: true })
       say('เลิกทำแล้ว')
     }
-  })
+  }, next)
 }
 
 /** Changes only the due date, at once, and rolls back on failure. */
