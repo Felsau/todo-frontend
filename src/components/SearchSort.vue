@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { nextTick, useId } from 'vue'
-import { SORTS, useListUi } from '../composables/useListUi'
-import type { SortKey } from '../types'
+import { useListUi } from '../composables/useListUi'
 import Icon from './Icon.vue'
+import SortMenu from './SortMenu.vue'
 
 /*
  * Sort menu and search. From 640px both sit at the right of the filter row.
@@ -12,7 +12,6 @@ import Icon from './Icon.vue'
 defineProps<{ phone?: boolean }>()
 const { query, sort, searchOpen, toggleSearch } = useListUi()
 const searchId = useId()
-const sortId = useId()
 
 /** Opening search on a phone puts the cursor straight in the box (R2-16). */
 async function onSearchToggle() {
@@ -22,24 +21,20 @@ async function onSearchToggle() {
   document.querySelector<HTMLInputElement>('[data-search-input]')?.focus()
 }
 
+/** The app's own clear button: empties the box and keeps the cursor in it. */
+function clearSearch() {
+  query.value = ''
+  document.querySelector<HTMLInputElement>('[data-search-input]')?.focus()
+}
+
 const field = 'box-border h-11 w-full rounded-full border-2 bg-white text-[1rem] font-semibold sm:text-[0.875rem]'
 </script>
 
 <template>
   <div v-if="phone" class="flex flex-col gap-2" data-list-tools>
     <div class="flex items-center gap-2">
-      <label :for="sortId" class="label">เรียง</label>
-      <div class="relative min-w-0 flex-1">
-        <select
-          :id="sortId"
-          :value="sort"
-          :class="[field, 'appearance-none pr-9 pl-3.5']"
-          @change="sort = ($event.target as HTMLSelectElement).value as SortKey"
-        >
-          <option v-for="s in SORTS" :key="s.key" :value="s.key">{{ s.label }}</option>
-        </select>
-        <Icon name="chevronDown" :size="14" :stroke="3" class="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2" />
-      </div>
+      <span class="label" aria-hidden="true">เรียง</span>
+      <SortMenu v-model="sort" :field-class="field" />
       <button
         type="button"
         class="btn-pill flex-none gap-1.5 pl-3 max-[22.5rem]:w-11 max-[22.5rem]:px-0"
@@ -62,8 +57,17 @@ const field = 'box-border h-11 w-full rounded-full border-2 bg-white text-[1rem]
         autocomplete="off"
         placeholder="ค้นหาชื่องานหรือโน้ต"
         data-search-input
-        :class="[field, 'pr-3.5 pl-10']"
+        :class="[field, 'pr-11 pl-10 sm:pr-9']"
       />
+      <button
+        v-if="query"
+        type="button"
+        aria-label="ล้างคำค้น"
+        class="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-ink sm:right-0.5 sm:size-10"
+        @click="clearSearch"
+      >
+        <Icon name="close" :size="16" :stroke="3" />
+      </button>
     </div>
   </div>
 
@@ -78,22 +82,21 @@ const field = 'box-border h-11 w-full rounded-full border-2 bg-white text-[1rem]
         autocomplete="off"
         placeholder="ค้นหาชื่องานหรือโน้ต"
         data-search-input
-        :class="[field, 'pr-3.5 pl-10']"
+        :class="[field, 'pr-11 pl-10 sm:pr-9']"
       />
+      <button
+        v-if="query"
+        type="button"
+        aria-label="ล้างคำค้น"
+        class="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-ink sm:right-0.5 sm:size-10"
+        @click="clearSearch"
+      >
+        <Icon name="close" :size="16" :stroke="3" />
+      </button>
     </div>
     <div class="flex items-center gap-2">
-      <label :for="sortId" class="label">เรียง</label>
-      <div class="relative min-w-37.5">
-        <select
-          :id="sortId"
-          :value="sort"
-          :class="[field, 'appearance-none pr-9 pl-3.5']"
-          @change="sort = ($event.target as HTMLSelectElement).value as SortKey"
-        >
-          <option v-for="s in SORTS" :key="s.key" :value="s.key">{{ s.label }}</option>
-        </select>
-        <Icon name="chevronDown" :size="14" :stroke="3" class="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2" />
-      </div>
+      <span class="label" aria-hidden="true">เรียง</span>
+      <SortMenu v-model="sort" :field-class="field" />
     </div>
   </div>
 </template>

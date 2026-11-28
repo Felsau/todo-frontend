@@ -280,6 +280,16 @@
     font-weight: 500;
   }
 
+  /* The app draws its own clear button (ล้างคำค้น); hide Chrome's unnamed one. */
+  input[type='search'] {
+    appearance: none;
+  }
+  input[type='search']::-webkit-search-cancel-button,
+  input[type='search']::-webkit-search-decoration {
+    appearance: none;
+    display: none;
+  }
+
   .label {
     font-size: 0.8125rem;
     font-weight: 600;
