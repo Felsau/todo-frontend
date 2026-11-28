@@ -33,7 +33,7 @@ const hit = computed(() => noteHit(props.todo))
 /** A done card shows the day it was ticked, not the day it was due (QA round 4 recheck, N1). */
 const finished = computed(() => (props.todo.is_completed ? doneLabel(props.todo.completed_at) : null))
 /** A done card also keeps its due date, small and muted, so it shows when it was due (recheck 2, M2). */
-const wasDue = computed(() => (finished.value && props.todo.due_date ? `กำหนด ${shortDate(props.todo.due_date)}` : null))
+const wasDue = computed(() => (finished.value && props.todo.due_date ? `กำหนดเดิม ${shortDate(props.todo.due_date)}` : null))
 const moveToday = () => reschedule(props.todo.id, today.value, `ย้าย “${props.todo.title}” มาวันนี้แล้ว`)
 const moveTomorrow = () => reschedule(props.todo.id, addDays(today.value, 1), `ย้าย “${props.todo.title}” ไปพรุ่งนี้แล้ว`)
 

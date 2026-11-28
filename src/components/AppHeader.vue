@@ -12,7 +12,7 @@ import Icon from './Icon.vue'
  * One header for both views (design review R7): eyebrow, title, the two stickers and the view
  * switch keep the same place on the list and the calendar.
  *
- * Yellow sticker = tasks due today only: "งานวันนี้ 1/3 เสร็จแล้ว", "3/3 ครบแล้ว!" or "ไม่มี".
+ * Yellow sticker = tasks due today only: "งานวันนี้ 1/3 เสร็จแล้ว", "3/3 ครบแล้ว!" or "0 งาน".
  * It is the same number as the calendar's today panel. Red sticker = overdue tasks, on every
  * screen size, the same number as the เลยกำหนด filter and group (QA round 4, P1, P2, P23, U1, U9).
  * "ครบแล้ว!" is only said when nothing is overdue either, so it never sits beside a red number
@@ -31,7 +31,7 @@ const allDone = computed(() => todayProgress.value.total > 0 && todayProgress.va
 const cleared = computed(() => allDone.value && overdueCount.value === 0)
 const todayName = computed(() => {
   const { done, total } = todayProgress.value
-  if (total === 0) return 'งานวันนี้ ไม่มีงานที่ครบกำหนด ดูงานวันนี้'
+  if (total === 0) return 'วันนี้ไม่มีงานที่ครบกำหนด ดูงานวันนี้'
   return `งานที่ครบกำหนดวันนี้ เสร็จ ${done} จาก ${total} งาน ดูงานวันนี้`
 })
 
@@ -123,9 +123,8 @@ const sticker =
             <span class="block text-[0.6875rem] sm:text-[0.75rem]">{{ cleared ? 'ครบแล้ว!' : 'เสร็จแล้ว' }}</span>
           </template>
           <template v-else>
-            <span class="block text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">ไม่มี</span>
-            <!-- keeps the same height as the other states -->
-            <span class="invisible block text-[0.6875rem] sm:text-[0.75rem]" aria-hidden="true">เสร็จแล้ว</span>
+            <span class="block text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">0</span>
+            <span class="block text-[0.6875rem] sm:text-[0.75rem]">งาน</span>
           </template>
         </button>
 

@@ -137,6 +137,9 @@ watch(todayRequest, async () => {
   flash(el)
 })
 
+/** Hidden tasks that are all done say "เสร็จแล้ว", so +3 is not read as three tasks still waiting (recheck 3, Q5). */
+const moreUnit = (hidden: { is_completed: boolean }[]) => (hidden.every((t) => t.is_completed) ? 'เสร็จแล้ว' : 'งาน')
+
 /** Up to three dots per day; more than three shows two and "+N" (QA round 4, P17). */
 const dotsOf = (iso: string) => {
   const list = on(iso)
@@ -223,7 +226,7 @@ const navBtn =
               {{ t.title }}
             </span>
             <span v-if="on(c.iso).length > 2" class="pl-0.5 text-[0.75rem] font-semibold">
-              +{{ on(c.iso).length - 2 }} งาน
+              +{{ on(c.iso).length - 2 }} {{ moreUnit(on(c.iso).slice(2)) }}
             </span>
           </button>
         </div>
@@ -280,7 +283,7 @@ const navBtn =
               </span>
             </span>
             <span class="h-3 text-[0.625rem] leading-3 font-bold whitespace-nowrap" data-dot-more>
-              <template v-if="dotsOf(iso).more">+{{ dotsOf(iso).more }} งาน</template>
+              <template v-if="dotsOf(iso).more">+{{ dotsOf(iso).more }} {{ moreUnit(on(iso).slice(2)) }}</template>
             </span>
           </span>
         </button>
