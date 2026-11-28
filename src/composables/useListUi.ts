@@ -219,8 +219,8 @@ export function useListUi() {
   const emptyText = computed(() => {
     const q = query.value.trim()
     if (q && hiddenByFilter.value) {
-      const label = FILTERS.find((f) => f.key === filter.value)?.label ?? ''
-      return `ไม่พบ “${q}” ใน${label} แต่มีในงานทั้งหมด ${hiddenByFilter.value} งาน`
+      const where = { active: 'งานที่ยังไม่เสร็จ', done: 'งานที่เสร็จแล้ว', overdue: 'งานที่เลยกำหนด', all: 'งานทั้งหมด' }[filter.value]
+      return `ไม่พบ “${q}” ใน${where} แต่เจอในงานอื่น ${hiddenByFilter.value} งาน`
     }
     if (q) return `ไม่พบงานที่ตรงกับ “${q}”`
     if (filter.value === 'active') return 'ไม่มีงานค้าง เคลียร์หมดแล้ว'

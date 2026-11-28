@@ -69,6 +69,8 @@ function shiftMonth(n: number) {
   const d = parseISO(monthStart.value)
   monthStart.value = toISO(new Date(d.getFullYear(), d.getMonth() + n, 1))
   selected.value = firstOfMonth(today.value) === monthStart.value ? today.value : monthStart.value
+  // Keep the phone week strip on the same day, in case the window is narrowed afterwards.
+  weekStart.value = startOfWeek(selected.value)
 }
 
 /** Picking a day from another month switches the grid to that month. */

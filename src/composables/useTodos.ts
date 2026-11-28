@@ -143,6 +143,7 @@ const MSG = {
   toggle: 'บันทึกไม่สำเร็จ เราย้อนกลับให้แล้ว ลองอีกครั้งนะ',
   addKept: 'เพิ่มงานไม่สำเร็จ ข้อความยังอยู่ในช่องพิมพ์ ลองกดเพิ่มอีกครั้งนะ',
   full: 'รายการเต็มแล้ว (200 งาน) ลบงานที่เสร็จแล้วก่อน แล้วค่อยเพิ่มใหม่นะ',
+  fullNoDone: 'รายการเต็มแล้ว (200 งาน) ลบงานที่ไม่ใช้แล้วก่อน แล้วค่อยเพิ่มใหม่นะ',
   remove: 'ลบไม่สำเร็จ เรากู้งานกลับมาให้แล้ว ลองอีกครั้งนะ',
   undo: 'กู้งานกลับมาไม่สำเร็จ ลองอีกครั้งนะ',
   clear: 'ลบงานที่เสร็จแล้วไม่สำเร็จ เรากู้งานกลับมาให้แล้ว ลองอีกครั้งนะ',
@@ -321,7 +322,7 @@ function add(
       const full = err instanceof ApiError && err.errors.some((e) => e.rule === 'maxTodos')
       if (full) {
         opts.restore?.()
-        showToast('error', MSG.full)
+        showToast('error', todos.value.some((t) => t.is_completed) ? MSG.full : MSG.fullNoDone)
         return
       }
       // Keep what the person typed (R2-05): back into the form, or a retry button.

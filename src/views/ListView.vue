@@ -18,7 +18,7 @@ import { estimateCard, splitColumns } from '../utils/columns'
 import { isOverdue, today } from '../utils/date'
 
 const { status, total } = useTodos()
-const { groups, emptyText, noteHit, hiddenByFilter, filter } = useListUi()
+const { groups, emptyText, noteHit, hiddenByFilter, filter, query } = useListUi()
 const isSm = useIsSm()
 const isLg = useIsLg()
 const { sheetOpen, fabShown, openSheet, due, priority } = useAddForm()
@@ -80,6 +80,7 @@ const grid =
         </div>
       </li>
     </ul>
+    <!-- No ลบงานที่เสร็จแล้ว while searching: it would also remove done tasks the search hides (round 6, N1). -->
     <ul v-else-if="groups.length === 0" :class="grid">
       <li
         class="col-span-full rounded-2xl border-2 border-dashed px-4 py-7 text-center text-[0.9375rem] leading-normal font-bold sm:py-10 sm:text-[1rem]"
@@ -104,7 +105,7 @@ const grid =
             {{ groups[0].countText }}
           </span>
         </h2>
-        <ClearDone v-if="groups[0].key === 'done'" />
+        <ClearDone v-if="groups[0].key === 'done' && !query.trim()" />
       </div>
       <ul :class="[grid, 'items-start']">
         <TodoCard v-for="t in groups[0].items" :key="t.id" :todo="t" />
@@ -132,7 +133,7 @@ const grid =
                 {{ g.countText }}
               </span>
             </h2>
-            <ClearDone v-if="g.key === 'done'" />
+            <ClearDone v-if="g.key === 'done' && !query.trim()" />
           </div>
           <ul class="m-0 flex list-none flex-col gap-3 p-0 pr-1 pb-1 sm:gap-4.5">
             <TodoCard v-for="t in g.items" :key="t.id" :todo="t" />

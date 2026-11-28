@@ -66,9 +66,8 @@ const upcoming = computed(() => allUpcoming.value.slice(0, 3))
  * Picking a past day: the warning waits until something is typed, and says it is about the task
  * being added, not the tasks listed below (round 6, M2).
  */
-const pastHint = computed(() =>
-  past.value && !isBlank(draft.value) ? `วันที่ ${nice.value} ผ่านมาแล้ว งานที่เพิ่มลงวันนั้นจะขึ้นว่าเลยกำหนดทันที` : '',
-)
+const pastText = computed(() => `วันที่ ${nice.value} ผ่านมาแล้ว งานที่เพิ่มลงวันนั้นจะขึ้นว่าเลยกำหนดทันที`)
+const pastHint = computed(() => (past.value && !isBlank(draft.value) ? pastText.value : ''))
 
 /* add form: the new todo gets the selected day as its due date */
 const draft = ref('')
@@ -123,6 +122,7 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
           id="new-day-todo"
           ref="input"
           v-model="draft"
+          :aria-describedby="pastHint ? 'day-past-hint' : undefined"
           maxlength="200"
           autocomplete="off"
           :placeholder="`เพิ่มงานวันที่ ${nice}`"
@@ -164,7 +164,8 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
           </template>
         </AnchoredPicker>
       </div>
-      <p v-if="pastHint" data-past-hint class="m-0 text-[0.8125rem] leading-normal font-semibold text-danger">{{ pastHint }}</p>
+      <!-- No room kept for it before typing: an always empty band looks like a broken box (owner check 2026-11-28, round 6 N6). -->
+      <p v-if="pastHint" id="day-past-hint" role="status" data-past-hint class="m-0 text-[0.8125rem] leading-normal font-semibold text-danger">{{ pastHint }}</p>
     </form>
 
     <ul class="m-0 flex list-none flex-col gap-2.5 p-0 pr-1 pb-1">
@@ -261,11 +262,11 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
     <section v-if="!isSm && upcoming.length > 0" :class="box" aria-labelledby="day-next-heading" data-day-next>
       <div>
         <h3 id="day-next-heading" class="m-0 text-[0.875rem] leading-normal font-bold">
-          {{ allUpcoming.length > upcoming.length ? `${upcoming.length} งานแรก` : 'งาน' }}ถัดไปหลังวันที่ {{ nice }}
+          งานถัดไปหลังวันที่ {{ nice
+          }}<span v-if="allUpcoming.length > upcoming.length" class="font-semibold text-muted"> ({{ upcoming.length }}&nbsp;จาก {{ allUpcoming.length }}&nbsp;งาน)</span>
         </h3>
-        <p class="m-0 text-[0.75rem] leading-normal font-semibold text-muted">
-          ไม่ใช่งานของวันที่เลือก ดูวันส่งได้ทางขวา{{ allUpcoming.length > upcoming.length ? ` (มีทั้งหมด ${allUpcoming.length} งาน)` : '' }}
-        </p>
+        <p class="m-0 text-[0.75rem] leading-normal font-semibold text-muted">ไม่ใช่งานของวันที่เลือก ดูวันส่งได้ทางขวา</p>
+        <RouterLink v-if="allUpcoming.length > upcoming.length" to="/" class="mt-1 inline-flex min-h-11 items-center text-[0.8125rem] font-bold underline underline-offset-2">ดูทั้งหมดในรายการ</RouterLink>
       </div>
       <div v-for="u in upcoming" :key="u.id" :class="row" :data-todo-id="u.id">
         <button

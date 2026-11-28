@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useAddForm } from '../composables/useAddForm'
 import { PRIORITY_HEX, PRIORITY_LABEL } from '../types'
-import { PAST_DATE_HINT, PAST_HINT_ID, isPastDate, today } from '../utils/date'
+import { PAST_HINT_ID, isPastDate, pastAddHint, today } from '../utils/date'
 import { isBlank } from '../utils/text'
 import AnchoredPicker from './AnchoredPicker.vue'
 import Icon from './Icon.vue'
@@ -96,7 +96,7 @@ defineExpose({ focus: () => input.value?.focus() })
       :data-past-hint="pastDue ? '' : undefined"
       class="m-0 text-[0.8125rem] leading-snug font-semibold text-danger max-sm:min-h-[1.3rem] sm:absolute sm:inset-x-4 sm:bottom-2.5"
     >
-      {{ pastDue ? PAST_DATE_HINT : '' }}
+      {{ pastDue ? pastAddHint(due) : '' }}
     </p>
   </form>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
-import { PAST_DATE_HINT, dueOptions, fullShortDate, isPastDate, shortDate, today } from '../utils/date'
+import { dueOptions, pastEditHint, fullShortDate, isPastDate, shortDate, today } from '../utils/date'
 import Icon from './Icon.vue'
 import ThaiDatePicker from './ThaiDatePicker.vue'
 
@@ -68,7 +68,7 @@ const custom = computed(() => !!props.modelValue && !dueOptions(today.value).som
       </template>
     </ThaiDatePicker>
     <p v-if="pastHint" :id="hintId" data-past-hint class="m-0 w-full text-[0.8125rem] leading-normal font-semibold text-danger">
-      {{ PAST_DATE_HINT }}
+      {{ pastEditHint(props.modelValue, isPastDate(props.saved ?? '', today)) }}
     </p>
   </div>
 </template>

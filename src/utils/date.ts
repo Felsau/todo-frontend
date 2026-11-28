@@ -173,7 +173,11 @@ export function isPastDate(due: string | null, todayISO: string): boolean {
 /** The red hint under a date picker when the chosen date has already passed. */
 /** id of the hint line under the add form's date row (the date buttons point at it). */
 export const PAST_HINT_ID = 'add-past-hint'
-export const PAST_DATE_HINT = 'วันที่เลือกผ่านมาแล้ว งานนี้จะขึ้นว่าเลยกำหนดทันที'
+/** Add forms: the picked day has passed (round 6, N4: names the day, same rule everywhere). */
+export const pastAddHint = (iso: string) => `วันที่ ${shortDate(iso)} ผ่านมาแล้ว งานที่เพิ่มจะขึ้นว่าเลยกำหนดทันที`
+/** Task detail: a past day picked for this task; it may already be overdue. */
+export const pastEditHint = (iso: string, alreadyOverdue: boolean) =>
+  `วันที่ ${shortDate(iso)} ผ่านมาแล้ว ${alreadyOverdue ? 'งานนี้จะยังเลยกำหนดอยู่' : 'งานนี้จะขึ้นว่าเลยกำหนดทันที'}`
 
 /** The four quick options of the shared due picker. */
 export function dueOptions(todayISO: string): { value: string; label: string }[] {
