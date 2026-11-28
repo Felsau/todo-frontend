@@ -5,30 +5,29 @@
 @font-face{font-family:"BJ";font-weight:600;src:url("../node_modules/@fontsource/bai-jamjuree/files/bai-jamjuree-latin-600-normal.woff2") format("woff2");unicode-range:U+0000-00FF,U+2000-206F;}
 *{box-sizing:border-box;margin:0}
 body{width:1200px;height:630px;background:#EDEBE6;font-family:"BJ",sans-serif;color:#111;position:relative;overflow:hidden}
-/* Everything sits straight on one grid; only the today sticker tilts, like the stickers in the app header (owner: the old one looked crooked). */
-.left{position:absolute;left:84px;top:0;width:500px;height:630px;display:flex;flex-direction:column;justify-content:center;gap:28px}
-.title{align-self:flex-start;background:#FFD43B;border:5px solid #111;border-radius:22px;box-shadow:10px 10px 0 #111;font-weight:700;font-size:104px;line-height:1.25;padding:2px 34px 8px}
-.tag{font-weight:600;font-size:32px;line-height:1.45}
-.stk{align-self:flex-start;margin-left:6px;width:170px;transform:rotate(-4deg);background:#FFD43B;border:4px solid #111;border-radius:18px;box-shadow:7px 7px 0 #111;text-align:center;padding:10px 0 10px;font-weight:700;z-index:2}
-.stk .k{display:block;font-size:22px;line-height:1.3}.stk b{display:block;font-size:58px;line-height:1.1}.stk .d{display:block;font-size:22px;line-height:1.3}
-.list{position:absolute;left:640px;top:0;width:476px;height:630px;display:flex;flex-direction:column;justify-content:center;gap:26px}
-.card{height:112px;border:4px solid #111;border-radius:18px;box-shadow:8px 8px 0 #111;display:flex;align-items:center;gap:20px;padding:0 22px}
-.cb{width:46px;height:46px;border:4px solid #111;border-radius:11px;background:#fff;flex:none;display:flex;align-items:center;justify-content:center}
-.body{display:flex;flex-direction:column;gap:9px;min-width:0}
-.t{font-weight:700;font-size:29px;line-height:1.3;white-space:nowrap}
-.chips{display:flex;gap:10px}
-.pill{font-weight:600;font-size:19px;line-height:1.3;border:3px solid #111;border-radius:999px;padding:1px 14px;background:#fff;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+/* Straight grid, only the today sticker tilts. Sized for chat thumbnails (~400 px wide): big type, one chip per card, little empty space (owner check in Discord). */
+.left{position:absolute;left:56px;top:0;width:520px;height:630px;display:flex;flex-direction:column;justify-content:center;gap:30px}
+.title{align-self:flex-start;background:#FFD43B;border:6px solid #111;border-radius:26px;box-shadow:12px 12px 0 #111;font-weight:700;font-size:124px;line-height:1.22;padding:2px 36px 10px}
+.tag{font-weight:700;font-size:38px;line-height:1.4}
+.stk{align-self:flex-start;margin-left:8px;width:210px;transform:rotate(-4deg);background:#FFD43B;border:5px solid #111;border-radius:20px;box-shadow:9px 9px 0 #111;text-align:center;padding:10px 0 12px;font-weight:700}
+.stk .k{display:block;font-size:28px;line-height:1.3}.stk b{display:block;font-size:76px;line-height:1.05}.stk .d{display:block;font-size:28px;line-height:1.3}
+.list{position:absolute;left:612px;top:0;width:538px;height:630px;display:flex;flex-direction:column;justify-content:center;gap:28px}
+.card{height:156px;border:5px solid #111;border-radius:22px;box-shadow:10px 10px 0 #111;display:flex;align-items:center;gap:22px;padding:0 26px}
+.cb{width:60px;height:60px;border:5px solid #111;border-radius:14px;background:#fff;flex:none;display:flex;align-items:center;justify-content:center}
+.body{display:flex;flex-direction:column;gap:12px;min-width:0}
+.t{font-weight:700;font-size:35px;line-height:1.3;white-space:nowrap}
+.pill{align-self:flex-start;font-weight:700;font-size:26px;line-height:1.3;border:4px solid #111;border-radius:999px;padding:2px 18px;background:#fff;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}
 .hi{background:#FFC9D9}.no{background:#FFE066}
-.done{background:#fff}.done .t{text-decoration:line-through;text-decoration-thickness:3px}
+.done{background:#fff}.done .t{text-decoration:line-through;text-decoration-thickness:4px}
 </style></head><body>
 <div class="left">
   <div class="title">ลุยงาน!</div>
-  <div class="tag">จดงาน ตั้งวันกำหนดส่ง ติ๊กเมื่อเสร็จ<br>และดูภาพรวมในปฏิทิน</div>
+  <div class="tag">จดงาน ตั้งวันส่ง ติ๊กเมื่อเสร็จ<br>ดูภาพรวมในปฏิทิน</div>
   <div class="stk"><span class="k">งานวันนี้</span><b>1/3</b><span class="d">เสร็จแล้ว</span></div>
 </div>
 <div class="list">
-  <div class="card hi"><div class="cb"></div><div class="body"><div class="t">ส่งรายงานประจำสัปดาห์</div><div class="chips"><span class="pill">สำคัญมาก</span><span class="pill"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>วันนี้</span></div></div></div>
-  <div class="card no"><div class="cb"></div><div class="body"><div class="t">ซื้อของเข้าบ้าน</div><div class="chips"><span class="pill">ปกติ</span><span class="pill"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>วันนี้</span></div></div></div>
-  <div class="card done"><div class="cb"><svg width="26" height="26" viewBox="0 0 30 30"><path d="M5 16l6 6 14-14" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="body"><div class="t">โทรหาคุณแม่</div><div class="chips"><span class="pill">ไม่รีบ</span><span class="pill"><svg width="16" height="16" viewBox="0 0 30 30"><path d="M5 16l6 6 14-14" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>เสร็จ 28 พ.ย.</span></div></div></div>
+  <div class="card hi"><div class="cb"></div><div class="body"><div class="t">ส่งรายงานประจำสัปดาห์</div><span class="pill"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>วันนี้</span></div></div>
+  <div class="card no"><div class="cb"></div><div class="body"><div class="t">ซื้อของเข้าบ้าน</div><span class="pill"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>วันนี้</span></div></div>
+  <div class="card done"><div class="cb"><svg width="36" height="36" viewBox="0 0 30 30"><path d="M5 16l6 6 14-14" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="body"><div class="t">โทรหาคุณแม่</div><span class="pill"><svg width="22" height="22" viewBox="0 0 30 30"><path d="M5 16l6 6 14-14" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>เสร็จแล้ว</span></div></div>
 </div>
 </body></html>
