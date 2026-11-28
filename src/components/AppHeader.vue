@@ -12,10 +12,12 @@ import Icon from './Icon.vue'
  * One header for both views (design review R7): eyebrow, title, the two stickers and the view
  * switch keep the same place on the list and the calendar.
  *
- * Yellow sticker = tasks due today only: "งานวันนี้ 1/3 เสร็จแล้ว", "3/3 ครบแล้ว!" or "ว่าง".
+ * Yellow sticker = tasks due today only: "งานวันนี้ 1/3 เสร็จแล้ว", "3/3 ครบแล้ว!" or "ไม่มี".
  * It is the same number as the calendar's today panel. Red sticker = overdue tasks, on every
  * screen size, the same number as the เลยกำหนด filter and group (QA round 4, P1, P2, P23, U1, U9).
- * Both are real buttons that take you to those tasks (U15).
+ * "ครบแล้ว!" is only said when nothing is overdue either, so it never sits beside a red number
+ * (recheck, N2). Both are real buttons that take you to those tasks (U15) and carry a small
+ * chevron so they read as tappable (N4).
  */
 const { status, todayProgress, overdueCount } = useTodos()
 const { filter, showAllByDue } = useListUi()
@@ -25,9 +27,11 @@ const router = useRouter()
 const onList = computed(() => route.name === 'list')
 
 const allDone = computed(() => todayProgress.value.total > 0 && todayProgress.value.done === todayProgress.value.total)
+/** Everything of today is done and nothing older is waiting. */
+const cleared = computed(() => allDone.value && overdueCount.value === 0)
 const todayName = computed(() => {
   const { done, total } = todayProgress.value
-  if (total === 0) return 'วันนี้ไม่มีงานที่ครบกำหนด ดูงานวันนี้'
+  if (total === 0) return 'งานวันนี้ ไม่มีงานที่ครบกำหนด ดูงานวันนี้'
   return `งานที่ครบกำหนดวันนี้ เสร็จ ${done} จาก ${total} งาน ดูงานวันนี้`
 })
 
@@ -62,9 +66,11 @@ function showOverdue() {
 
 const navLink =
   'flex h-11 flex-1 items-center justify-center gap-2 px-5 text-[0.875rem] font-semibold text-ink no-underline sm:flex-none aria-[current=page]:bg-ink aria-[current=page]:text-white'
+/* The chevron sits in the right edge, so no state changes the size of its sticker. */
+const chevron = 'absolute top-1/2 right-0.5 -translate-y-1/2 opacity-80'
 /* Both stickers share one size, so the header never moves when a count changes (owner decision 1). */
 const sticker =
-  'box-border flex min-h-[4.375rem] flex-col items-center justify-center rounded-xl border-2 px-2 py-1 text-center leading-tight font-bold shadow-brutal-sm sm:min-h-19 sm:px-4 sm:py-1.5 sm:shadow-brutal'
+  'relative box-border flex min-h-[4.375rem] flex-col items-center justify-center rounded-xl border-2 px-2 py-1 text-center leading-tight font-bold shadow-brutal-sm sm:min-h-19 sm:px-4 sm:py-1.5 sm:shadow-brutal'
 </script>
 
 <template>
@@ -106,17 +112,18 @@ const sticker =
           type="button"
           data-today-sticker
           :aria-label="todayName"
-          class="min-w-16 -rotate-4 bg-accent sm:min-w-21"
+          class="min-w-[4.5rem] -rotate-4 bg-accent sm:min-w-23"
           :class="sticker"
           @click="showToday"
         >
+          <Icon name="chevronRight" :size="10" :stroke="3.5" :class="chevron" />
           <span class="block text-[0.6875rem] sm:text-[0.75rem]">งานวันนี้</span>
           <template v-if="todayProgress.total > 0">
             <span class="block text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">{{ todayProgress.done }}/{{ todayProgress.total }}</span>
-            <span class="block text-[0.6875rem] sm:text-[0.75rem]">{{ allDone ? 'ครบแล้ว!' : 'เสร็จแล้ว' }}</span>
+            <span class="block text-[0.6875rem] sm:text-[0.75rem]">{{ cleared ? 'ครบแล้ว!' : 'เสร็จแล้ว' }}</span>
           </template>
           <template v-else>
-            <span class="block text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">ว่าง</span>
+            <span class="block text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">ไม่มี</span>
             <!-- keeps the same height as the other states -->
             <span class="invisible block text-[0.6875rem] sm:text-[0.75rem]" aria-hidden="true">เสร็จแล้ว</span>
           </template>
@@ -126,11 +133,12 @@ const sticker =
           v-if="overdueCount > 0"
           type="button"
           data-overdue-sticker
-          class="min-w-14 rotate-3 bg-danger text-white sm:min-w-19"
+          class="min-w-16 rotate-3 bg-danger text-white sm:min-w-21"
           :class="sticker"
           :aria-label="`ดูงานเลยกำหนด ${overdueCount} งาน`"
           @click="showOverdue"
         >
+          <Icon name="chevronRight" :size="10" :stroke="3.5" :class="chevron" />
           <span class="block text-[1.5rem] leading-[1.15] sm:text-[1.75rem]">{{ overdueCount }}</span>
           <span class="block text-[0.6875rem] sm:text-[0.75rem]">เลยกำหนด</span>
         </button>

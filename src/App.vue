@@ -36,13 +36,13 @@ function toTop() {
   focusHome()
 }
 
-/* The shared notice can be read again from the foot of the page (QA round 4, P22). */
+/* The shared notice can be read again from a small button under the header (QA round 4, P22; recheck, N11). */
 async function reopenNotice() {
   notice.reopen()
   await nextTick()
   const el = document.querySelector<HTMLElement>('[data-shared-notice]')
   if (!el) return
-  el.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  el.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
   el.focus({ preventScroll: true })
 }
 
@@ -85,19 +85,19 @@ onBeforeUnmount(() => {
       <AppHeader />
       <ConnectionBanner />
       <SharedNotice />
+      <div v-if="!notice.open.value" class="-mt-1 flex">
+        <button
+          type="button"
+          class="btn-pill h-9 gap-1.5 px-3 text-[0.75rem] shadow-brutal-sm sm:text-[0.8125rem]"
+          data-reopen-notice
+          @click="reopenNotice"
+        >
+          <Icon name="users" :size="15" :stroke="2.5" />
+          รายการนี้ใช้ร่วมกัน ดูรายละเอียดและลิงก์
+        </button>
+      </div>
       <RouterView />
     </main>
-    <footer v-if="status === 'ready' && !notice.open.value" class="mx-auto mt-8 flex max-w-280 justify-center">
-      <button
-        type="button"
-        class="inline-flex min-h-11 items-center gap-2 rounded-full border-0 bg-transparent px-3 text-[0.8125rem] font-semibold text-muted underline decoration-1 underline-offset-4"
-        data-reopen-notice
-        @click="reopenNotice"
-      >
-        <Icon name="users" :size="16" />
-        รายการนี้ใช้ร่วมกัน ดูรายละเอียดและลิงก์
-      </button>
-    </footer>
   </div>
   <!--
     Above the toast (its height is --toast-lift). On a phone list it sits left of the round +

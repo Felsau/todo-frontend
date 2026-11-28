@@ -81,6 +81,7 @@
  */
 .btn-primary:disabled,
 .btn-pill:disabled,
+.btn-mini:disabled,
 .icon-btn:disabled {
   background: var(--color-off);
   color: #6b6862;
@@ -204,6 +205,35 @@
     font-size: 0.875rem;
     font-weight: 600;
     white-space: nowrap;
+  }
+
+  /* Small button for a quick action inside a card (the overdue move buttons): border and hard shadow like the others. */
+  .btn-mini {
+    display: inline-flex;
+    height: 2rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    border-width: 2px;
+    border-radius: 0.5rem;
+    background: #fff;
+    padding-inline: 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 2px 2px 0 var(--color-ink);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .btn-mini {
+      transition:
+        transform 0.12s,
+        box-shadow 0.12s;
+    }
+    .btn-mini:not(:disabled):active {
+      transform: translate(2px, 2px);
+      box-shadow: 0 0 0 var(--color-ink);
+    }
   }
 
   /* Square 44px icon button on cards. */

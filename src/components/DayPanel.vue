@@ -5,7 +5,7 @@ import { useDetail } from '../composables/useDetail'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_HEX, PRIORITY_LABEL, type Priority, type Todo } from '../types'
-import { PAST_DATE_HINT, dayMonthLong, diffDays, isOverdue, isPastDate, shortDate, today, weekdayName } from '../utils/date'
+import { PAST_DATE_HINT, dayMonthLong, diffDays, doneLabel, isOverdue, isPastDate, shortDate, today, weekdayName } from '../utils/date'
 import { isBlank } from '../utils/text'
 import AnchoredPicker from './AnchoredPicker.vue'
 import Icon from './Icon.vue'
@@ -196,6 +196,14 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
             </span>
             <span class="flex flex-wrap items-center gap-1.5">
               <span class="text-[0.75rem] font-semibold">{{ PRIORITY_LABEL[t.priority] }}</span>
+              <span
+                v-if="t.is_completed && doneLabel(t.completed_at)"
+                data-done-chip
+                class="inline-flex items-center gap-1 rounded-md border-2 bg-white px-2 py-px text-[0.75rem] font-semibold"
+              >
+                <Icon name="check" :size="12" :stroke="3.5" />
+                {{ doneLabel(t.completed_at) }}
+              </span>
               <span
                 v-if="overdue(t)"
                 class="inline-block rounded-md border-2 bg-danger px-2 py-px text-[0.75rem] font-semibold text-white"

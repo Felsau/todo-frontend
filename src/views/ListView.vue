@@ -35,15 +35,16 @@ onBeforeUnmount(() => {
 })
 
 /*
- * Phones: one column of rows. From 640px the groups flow down two columns (three from 1024px)
- * and on into the next, newspaper style, so the width is used and the list still reads top to
- * bottom (QA round 4, P21). Every sort has headings, so the page keeps this shape (P13).
+ * Phones: one column of rows. From 640px the groups are placed whole into two columns (three from
+ * 1024px), balanced by height, in order from the top of one column to the next, so the width is
+ * used and the list still reads top to bottom (QA round 4, P21; recheck, N7). A group is never
+ * cut in two. Every sort has headings, so the page keeps this shape (P13).
  */
 const columns = computed(() => {
   const n = !isSm.value ? 1 : isLg.value ? 3 : 2
   return splitColumns(groups.value, n, (t) => {
     let extra = 0
-    if (isOverdue(t.due_date, t.is_completed, today.value)) extra += 52
+    if (isOverdue(t.due_date, t.is_completed, today.value)) extra += 42
     if (noteHit(t)) extra += 22
     return estimateCard(t, extra)
   })
@@ -86,38 +87,29 @@ const grid =
     <div v-else class="grid items-start gap-x-4.5 gap-y-6 sm:grid-cols-2 lg:grid-cols-3" data-card-list>
       <div v-for="(col, ci) in columns" :key="ci" class="flex min-w-0 flex-col gap-6" data-column>
         <section
-          v-for="p in col"
-          :key="p.group.key + (p.cont ? '-cont' : '')"
+          v-for="g in col"
+          :key="g.key"
           class="flex flex-col gap-2.5 sm:gap-3"
-          :aria-labelledby="`group-${p.group.key}`"
-          :data-group="p.group.key"
+          :aria-labelledby="`group-${g.key}`"
+          :data-group="g.key"
         >
           <div class="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-            <div
-              v-if="p.cont"
-              aria-hidden="true"
-              class="flex items-baseline gap-2 text-[0.9375rem] leading-normal font-bold sm:text-[1rem]"
-              :class="p.group.key === 'overdue' && 'text-danger'"
-            >
-              {{ p.group.label }} (ต่อ)
-            </div>
             <h2
-              v-else
-              :id="`group-${p.group.key}`"
+              :id="`group-${g.key}`"
               tabindex="-1"
               class="m-0 flex scroll-mt-4 items-center gap-2 text-[0.9375rem] leading-normal font-bold focus:outline-none sm:text-[1rem]"
-              :class="p.group.key === 'overdue' && 'text-danger'"
+              :class="g.key === 'overdue' && 'text-danger'"
             >
-              <Icon v-if="p.group.key === 'overdue'" name="alert" :size="17" :stroke="2.6" />
-              {{ p.group.label }}
-              <span class="text-[0.8125rem] font-semibold" :class="p.group.key === 'overdue' ? 'text-danger' : 'text-muted'">
-                {{ p.group.count }} งาน
+              <Icon v-if="g.key === 'overdue'" name="alert" :size="17" :stroke="2.6" />
+              {{ g.label }}
+              <span class="text-[0.8125rem] font-semibold" :class="g.key === 'overdue' ? 'text-danger' : 'text-muted'">
+                {{ g.count }} งาน
               </span>
             </h2>
-            <ClearDone v-if="p.group.key === 'done' && !p.cont" />
+            <ClearDone v-if="g.key === 'done'" />
           </div>
           <ul class="m-0 flex list-none flex-col gap-3 p-0 pr-1 pb-1 sm:gap-4.5">
-            <TodoCard v-for="t in p.items" :key="t.id" :todo="t" />
+            <TodoCard v-for="t in g.items" :key="t.id" :todo="t" />
           </ul>
         </section>
       </div>

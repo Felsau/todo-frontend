@@ -372,7 +372,7 @@ const sectionClass = toRef(() =>
           <div class="flex flex-col gap-1.5">
             <div class="flex flex-wrap items-baseline justify-between gap-x-3">
               <span :id="ids.status" class="label">สถานะ</span>
-              <span class="text-[0.75rem] leading-normal font-semibold text-muted">กดแล้วบันทึกทันที</span>
+              <span class="text-[0.75rem] leading-normal font-semibold text-muted">สถานะบันทึกทันที ส่วนอื่นกด บันทึก</span>
             </div>
             <div role="group" :aria-labelledby="ids.status" class="grid grid-cols-2 gap-2">
               <button

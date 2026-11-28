@@ -134,6 +134,16 @@ export function dueInfo(due: string | null, done: boolean, todayISO: string): Du
   return { label: nice, overdue: false }
 }
 
+/**
+ * "เสร็จ 28 พ.ย." for the chip of a done card: the day it was ticked, not the day it was due
+ * (QA round 4 recheck, N1). Null when the time is missing (older data): the card then shows its due chip.
+ */
+export function doneLabel(completedAt: string | null): string | null {
+  if (!completedAt) return null
+  const d = new Date(completedAt)
+  return Number.isNaN(d.getTime()) ? null : `เสร็จ ${shortDate(toISO(d))}`
+}
+
 export function isOverdue(due: string | null, done: boolean, todayISO: string): boolean {
   return !done && !!due && due < todayISO
 }

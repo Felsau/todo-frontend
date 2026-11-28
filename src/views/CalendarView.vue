@@ -7,6 +7,7 @@ import LoadError from '../components/LoadError.vue'
 import { todayRequest, useCalendarTodos } from '../composables/useCalendarTodos'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
+import { flash } from '../utils/reveal'
 import { WEEKDAY_SHORT, addDays, dayMonthLong, monthLabel, parseISO, shortDate, startOfWeek, today, toISO, weekLabel } from '../utils/date'
 
 /*
@@ -119,8 +120,22 @@ function goToday() {
   monthStart.value = firstOfMonth(today.value)
   weekStart.value = startOfWeek(today.value)
 }
-// The yellow header sticker on this view selects today.
-watch(todayRequest, goToday)
+/**
+ * The yellow header sticker on this view selects today, brings the day panel into view when it
+ * is low on the screen, and flashes it, so the tap visibly does something (recheck, N4).
+ */
+watch(todayRequest, async () => {
+  goToday()
+  await nextTick()
+  const el = panel.value
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  if (r.top > window.innerHeight * 0.55 || r.top < 0) {
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.scrollTo({ top: Math.max(0, window.scrollY + r.top - 16), behavior: smooth ? 'smooth' : 'auto' })
+  }
+  flash(el)
+})
 
 /** Up to three dots per day; more than three shows two and "+N" (QA round 4, P17). */
 const dotsOf = (iso: string) => {
@@ -238,7 +253,7 @@ const navBtn =
           v-for="iso in week"
           :key="iso"
           type="button"
-          class="box-border flex h-19 min-w-0 flex-col items-center justify-between rounded-xl border-2 py-1.5"
+          class="box-border flex h-22 min-w-0 flex-col items-center justify-between rounded-xl border-2 py-1.5"
           :class="iso === selected ? 'bg-sel shadow-brutal-sm' : 'bg-white'"
           :aria-pressed="iso === selected"
           :aria-current="iso === today ? 'date' : undefined"
@@ -252,14 +267,21 @@ const navBtn =
           >
             {{ parseISO(iso).getDate() }}
           </span>
-          <span class="flex h-2.5 items-center gap-0.75">
-            <span
-              v-for="t in dotsOf(iso).dots"
-              :key="t.id"
-              class="box-border size-2 rounded-full border-[1.5px]"
-              :class="dotClass(t)"
-            ></span>
-            <span v-if="dotsOf(iso).more" class="text-[0.625rem] leading-none font-bold">+{{ dotsOf(iso).more }}</span>
+          <span class="flex flex-col items-center gap-0.5">
+            <span class="flex h-3 items-center gap-0.75">
+              <span
+                v-for="t in dotsOf(iso).dots"
+                :key="t.id"
+                class="box-border flex items-center justify-center rounded-full border-[1.5px]"
+                :class="[t.is_completed ? 'size-3 text-ink' : 'size-2', dotClass(t)]"
+                :data-dot="t.is_completed ? 'done' : 'open'"
+              >
+                <Icon v-if="t.is_completed" name="check" :size="8" :stroke="5" />
+              </span>
+            </span>
+            <span class="h-3 text-[0.625rem] leading-3 font-bold whitespace-nowrap" data-dot-more>
+              <template v-if="dotsOf(iso).more">+{{ dotsOf(iso).more }} งาน</template>
+            </span>
           </span>
         </button>
       </div>
@@ -269,7 +291,7 @@ const navBtn =
         <span class="flex items-center gap-1"><span class="box-border size-2.5 rounded-full border-[1.5px] bg-normal"></span>ปกติ</span>
         <span class="flex items-center gap-1"><span class="box-border size-2.5 rounded-full border-[1.5px] bg-low"></span>ไม่รีบ</span>
         <span class="flex items-center gap-1"><span class="box-border size-2.5 rounded-full border-[1.5px] bg-danger"></span>เลยกำหนด</span>
-        <span class="flex items-center gap-1"><span class="box-border size-2.5 rounded-full border-[1.5px] bg-white"></span>เสร็จแล้ว</span>
+        <span class="flex items-center gap-1"><span class="box-border flex size-3 items-center justify-center rounded-full border-[1.5px] bg-white"><Icon name="check" :size="8" :stroke="5" /></span>เสร็จแล้ว</span>
       </div>
     </section>
 

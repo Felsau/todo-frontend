@@ -65,9 +65,9 @@ export const GROUP_LABEL: Record<GroupKey, string> = {
   high: PRIORITY_LABEL.high,
   normal: PRIORITY_LABEL.normal,
   low: PRIORITY_LABEL.low,
-  addedToday: 'เพิ่มวันนี้',
-  addedYesterday: 'เพิ่มเมื่อวาน',
-  addedEarlier: 'เพิ่มก่อนหน้านั้น',
+  addedToday: 'สร้างวันนี้',
+  addedYesterday: 'สร้างเมื่อวาน',
+  addedEarlier: 'สร้างก่อนหน้านั้น',
   done: 'เสร็จแล้ว',
 }
 
@@ -178,7 +178,7 @@ export function useListUi() {
   function tickMessage(t: Todo, done: boolean): string {
     const name = `“${t.title}”`
     if (done) {
-      if (filter.value === 'all') return `เสร็จแล้ว ${name} ย้ายไปไว้ท้ายรายการ`
+      if (filter.value === 'all') return `เสร็จแล้ว ${name} ย้ายไปกลุ่ม เสร็จแล้ว`
       return `เสร็จแล้ว ${name} ดูได้ที่ตัวกรอง เสร็จแล้ว`
     }
     if (filter.value === 'done') return `ยังไม่เสร็จ ${name} ดูได้ที่ตัวกรอง ยังไม่เสร็จ`
