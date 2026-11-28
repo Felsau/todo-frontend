@@ -1,6 +1,12 @@
 # Todo Frontend
 
-หน้าเว็บของแอป Todo List ชื่อ "ลุยงาน!" ทำด้วย Vue.js 3 และ TypeScript ดีไซน์แบบ neo-brutalist ทุกการกระทำส่งคำขอไปที่ [todo-api](../todo-api) ทันที และรีเฟรชหน้าแล้วรายการยังอยู่ เพราะดึงจาก API ทุกครั้งที่เปิดหน้า
+| ส่วน | ลิงก์ |
+|---|---|
+| Frontend (Vue 3) | https://github.com/Felsau/todo-frontend |
+| API (AdonisJS 5) | https://github.com/Felsau/todo-api |
+| เว็บจริงสำหรับลองใช้ | https://todo-frontend-xuka.onrender.com |
+
+หน้าเว็บของแอป Todo List ชื่อ "ลุยงาน!" ทำด้วย Vue.js 3 และ TypeScript ดีไซน์แบบ neo-brutalist ทุกการกระทำส่งคำขอไปที่ [todo-api](https://github.com/Felsau/todo-api) ทันที และรีเฟรชหน้าแล้วรายการยังอยู่ เพราะดึงจาก API ทุกครั้งที่เปิดหน้า
 
 ลองใช้งานได้ที่ https://todo-frontend-xuka.onrender.com (API อยู่ที่ https://todo-api-g7v9.onrender.com) API ใช้แพ็กเกจฟรีของ Render ซึ่งจะหลับเมื่อไม่มีคนใช้ 15 นาที การเปิดครั้งแรกหลังจากนั้นจึงต้องรอราว 30 ถึง 40 วินาที (วัดจริงเมื่อ 28 พฤศจิกายน 2569 API ตอบที่ 32.6 วินาที และงานขึ้นที่ 37.3 วินาที)
 
