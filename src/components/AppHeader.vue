@@ -10,7 +10,14 @@ import Icon from './Icon.vue'
  * One header for both views (design review R7): eyebrow, title, view switch,
  * done sticker and overdue sticker keep the same place on the list and the calendar.
  */
-const { status, total, doneCount, overdueCount } = useTodos()
+const { status, todayProgress, overdueCount } = useTodos()
+
+/** Header sticker = today's progress (tasks due today plus overdue ones), not the whole list. */
+const todayLabel = computed(() => {
+  const { done, total } = todayProgress.value
+  if (total === 0) return 'วันนี้ไม่มีงานที่ครบกำหนด'
+  return `วันนี้เสร็จแล้ว ${done} จาก ${total} งาน นับงานที่ครบกำหนดวันนี้และงานที่เลยกำหนด`
+})
 const { filter, searchOpen, toggleSearch } = useListUi()
 const route = useRoute()
 const router = useRouter()
@@ -79,10 +86,17 @@ const navLink =
       ></div>
       <div
         v-else-if="status === 'ready'"
+        :title="todayLabel"
+        data-today-sticker
         class="-rotate-4 rounded-xl border-2 bg-accent px-3 py-1.5 text-center shadow-brutal-sm sm:px-4 sm:py-2 sm:shadow-brutal"
       >
-        <div class="text-[1.625rem] leading-[1.2] font-bold sm:text-[1.875rem]">{{ doneCount }}/{{ total }}</div>
-        <div class="text-[0.75rem] leading-tight font-bold">เสร็จแล้ว</div>
+        <div class="text-[0.75rem] leading-tight font-bold" aria-hidden="true">วันนี้</div>
+        <template v-if="todayProgress.total > 0">
+          <div class="text-[1.625rem] leading-[1.15] font-bold sm:text-[1.875rem]" aria-hidden="true">{{ todayProgress.done }}/{{ todayProgress.total }}</div>
+          <div class="text-[0.75rem] leading-tight font-bold" aria-hidden="true">{{ todayProgress.done === todayProgress.total ? 'ครบแล้ว!' : 'เสร็จแล้ว' }}</div>
+        </template>
+        <div v-else class="text-[1.375rem] leading-[1.3] font-bold sm:text-[1.5rem]" aria-hidden="true">ว่าง</div>
+        <span class="sr-only">{{ todayLabel }}</span>
       </div>
 
       <button

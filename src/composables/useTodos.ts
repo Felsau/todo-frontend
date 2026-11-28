@@ -1,7 +1,7 @@
 import { computed, nextTick, reactive, ref } from 'vue'
 import { ApiError, todosApi } from '../api/todos'
 import type { Priority, Todo, TodoPatch } from '../types'
-import { isOverdue, today } from '../utils/date'
+import { isOverdue, toISO, today } from '../utils/date'
 import { cardOf, flash, focusCard, focusHome, isOnScreen, neighbourOf, revealCard } from '../utils/reveal'
 import { isBlank } from '../utils/text'
 
@@ -489,6 +489,22 @@ function forget(id: number) {
 
 const total = computed(() => todos.value.length)
 const doneCount = computed(() => todos.value.filter((t) => t.is_completed).length)
+/**
+ * Today's progress for the header sticker: tasks due today, overdue tasks still open,
+ * and overdue tasks ticked today (so finishing one moves the count up instead of dropping it).
+ * `today` refreshes itself, so the count starts over after midnight.
+ */
+const todayProgress = computed(() => {
+  const d = today.value
+  const scope = todos.value.filter((t) => {
+    if (!t.due_date) return false
+    const due = t.due_date.slice(0, 10)
+    if (due === d) return true
+    if (due > d) return false
+    return !effDone(t) || toISO(new Date(t.updated_at)) === d
+  })
+  return { total: scope.length, done: scope.filter((t) => effDone(t)).length }
+})
 const overdueCount = computed(
   () => todos.value.filter((t) => isOverdue(t.due_date, t.is_completed, today.value)).length,
 )
@@ -508,6 +524,7 @@ export function useTodos() {
     total,
     doneCount,
     overdueCount,
+    todayProgress,
     effDone,
     load,
     refresh,
