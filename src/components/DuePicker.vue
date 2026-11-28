@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useId } from 'vue'
-import { dueOptions, fullShortDate, today } from '../utils/date'
+import { computed, useId } from 'vue'
+import { PAST_DATE_HINT, dueOptions, fullShortDate, isPastDate, today } from '../utils/date'
 import Icon from './Icon.vue'
 
 /*
@@ -14,8 +14,10 @@ const props = withDefaults(
     modelValue: string
     /** panel: a visible "เลือกวัน" label and a done button. inline: a pill input in the chip row. */
     variant?: 'panel' | 'inline'
+    /** The task is already done, so a past date will not make it overdue. */
+    done?: boolean
   }>(),
-  { variant: 'panel' },
+  { variant: 'panel', done: false },
 )
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -26,6 +28,12 @@ const emit = defineEmits<{
 }>()
 
 const inputId = useId()
+const hintId = useId()
+
+/** A date already gone: allowed, but say it will be overdue at once (UI 6). */
+const past = computed(() => !props.done && isPastDate(props.modelValue, today.value))
+/** A picked date that is none of the quick options: the date pill is the selected one (UI 13). */
+const custom = computed(() => !!props.modelValue && !dueOptions(today.value).some((o) => o.value === props.modelValue))
 
 function onDate(e: Event) {
   // Keep the picker open while typing: a keyboard-typed date fires change early (review R11).
@@ -63,26 +71,34 @@ function choose(value: string) {
       <template v-if="props.variant === 'inline'">
         <label :for="inputId" class="sr-only">เลือกวัน</label>
         <span
-          class="relative box-border flex h-11 items-center gap-2 rounded-full border-2 bg-white px-3.5 text-[13px] font-semibold focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-focus"
+          class="relative box-border flex h-11 items-center gap-2 rounded-full border-2 px-3.5 text-[0.8125rem] font-semibold focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-focus"
+          :class="past ? 'border-danger bg-[#ffe3e3] text-[#8f1d1d]' : custom ? 'bg-accent' : 'bg-white'"
+          :data-date-pill="custom ? 'selected' : undefined"
         >
-          <Icon name="calendar" :size="15" />
+          <Icon v-if="custom" name="check" :size="14" :stroke="3.5" />
+          <Icon v-else name="calendar" :size="15" />
           <span aria-hidden="true">{{ props.modelValue ? fullShortDate(props.modelValue) : 'เลือกวัน' }}</span>
           <input
             :id="inputId"
             type="date"
             :value="props.modelValue"
-            class="absolute inset-0 cursor-pointer text-[16px] opacity-0"
+            :aria-describedby="past ? hintId : undefined"
+            class="absolute inset-0 cursor-pointer text-[1rem] opacity-0"
             @click="openPicker"
             @keydown.enter.prevent="openPicker"
             @change="onDate"
           />
         </span>
+        <p v-if="past" :id="hintId" data-past-hint class="m-0 w-full text-[0.8125rem] leading-normal font-semibold text-danger">
+          {{ PAST_DATE_HINT }}
+        </p>
       </template>
     </div>
     <div v-if="props.variant === 'panel'" class="flex items-center gap-2.5">
       <label :for="inputId" class="label">เลือกวัน</label>
       <span
-        class="relative box-border flex h-11 min-w-0 flex-1 items-center gap-2 rounded-[10px] border-2 bg-white px-2.5 text-[14px] font-semibold focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-focus"
+        class="relative box-border flex h-11 min-w-0 flex-1 items-center gap-2 rounded-[10px] border-2 px-2.5 text-[0.875rem] font-semibold focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-focus"
+        :class="past ? 'border-danger bg-[#ffe3e3] text-[#8f1d1d]' : 'bg-white'"
       >
         <Icon name="calendar" :size="16" />
         <span aria-hidden="true" :class="!props.modelValue && 'text-muted'">
@@ -92,7 +108,8 @@ function choose(value: string) {
           :id="inputId"
           type="date"
           :value="props.modelValue"
-          class="absolute inset-0 cursor-pointer text-[16px] opacity-0"
+          :aria-describedby="past ? hintId : undefined"
+          class="absolute inset-0 cursor-pointer text-[1rem] opacity-0"
           @click="openPicker"
           @change="onDate"
           @keydown.enter.prevent="emit('done')"
@@ -100,5 +117,8 @@ function choose(value: string) {
       </span>
       <button type="button" class="btn-pill" @click="emit('done')">เสร็จ</button>
     </div>
+    <p v-if="props.variant === 'panel' && past" :id="hintId" data-past-hint class="m-0 -mt-1 text-[0.8125rem] leading-normal font-semibold text-danger">
+      {{ PAST_DATE_HINT }}
+    </p>
   </div>
 </template>

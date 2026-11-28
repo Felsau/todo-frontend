@@ -5,16 +5,17 @@ import Icon from './Icon.vue'
 
 /*
  * Shown instead of the skeleton when the first load is slow: the API host sleeps
- * when idle and takes about a minute to wake. Plain words for people, no server talk.
+ * when idle and takes about 30 to 40 seconds to wake (measured 2026-11-28: 32.6 s for the API,
+ * 37.3 s until the list showed). Plain words for people, no server talk.
  */
 const { waitedSec } = useTodos()
-/** Eases towards 95% over about a minute, so the bar never claims to be done early. */
-const progress = computed(() => Math.round(95 * (1 - Math.exp(-waitedSec.value / 25))))
+/** Eases towards 95% (about 85% at 35 s), so the bar never claims to be done early. */
+const progress = computed(() => Math.round(95 * (1 - Math.exp(-waitedSec.value / 15))))
 const phrase = computed(() => {
   const s = waitedSec.value
-  if (s < 20) return 'แป๊บนึงนะ'
-  if (s < 45) return 'กำลังมา ใกล้แล้ว'
-  if (s < 70) return 'อีกนิดเดียวนะ'
+  if (s < 15) return 'แป๊บนึงนะ'
+  if (s < 30) return 'กำลังมา ใกล้แล้ว'
+  if (s < 60) return 'อีกนิดเดียวนะ'
   return 'นานกว่าปกตินิดนึง ลองเช็กอินเทอร์เน็ตดูด้วยนะ'
 })
 </script>
@@ -38,9 +39,9 @@ const phrase = computed(() => {
     </div>
 
     <div class="flex flex-col gap-1.5">
-      <h2 class="m-0 text-[20px] leading-snug font-bold sm:text-[22px]">กำลังเตรียมรายการงานของคุณ</h2>
-      <p class="m-0 text-[14px] leading-relaxed font-medium text-[#333]">
-        ถ้าไม่มีใครเปิดแอปมาสักพัก การเปิดครั้งแรกจะใช้เวลาราว 1 นาที ไม่ต้องรีเฟรชนะ รายการจะขึ้นมาเอง
+      <h2 class="m-0 text-[1.25rem] leading-snug font-bold sm:text-[1.375rem]">กำลังเตรียมรายการงานของคุณ</h2>
+      <p class="m-0 text-[0.875rem] leading-relaxed font-medium text-[#333]">
+        ถ้าไม่มีใครเปิดแอปมาสักพัก การเปิดครั้งแรกจะใช้เวลาราว 30 ถึง 40 วินาที ไม่ต้องรีเฟรชนะ รายการจะขึ้นมาเอง
       </p>
     </div>
 
@@ -59,7 +60,7 @@ const phrase = computed(() => {
           :style="{ width: progress + '%' }"
         ></div>
       </div>
-      <div class="flex items-center justify-between text-[13px] font-semibold">
+      <div class="flex items-center justify-between text-[0.8125rem] font-semibold">
         <span>{{ phrase }}</span>
         <span class="text-muted" aria-hidden="true">{{ waitedSec }} วินาที</span>
       </div>

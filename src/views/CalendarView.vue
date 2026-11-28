@@ -75,6 +75,25 @@ function pickCell(c: Cell) {
   weekStart.value = startOfWeek(c.iso)
 }
 
+const panel = ref<HTMLElement | null>(null)
+
+/**
+ * On a tablet the day panel wraps under the month grid, below the fold. A tap on a day then
+ * scrolls the panel up so its tasks and add box are seen (UI 7). Arrow keys never scroll.
+ */
+async function onCellClick(e: MouseEvent, c: Cell) {
+  pickCell(c)
+  if (e.detail === 0) return // Enter or Space: the keyboard user stays on the grid
+  await nextTick()
+  const el = panel.value
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  const below = r.top > (el.previousElementSibling?.getBoundingClientRect().bottom ?? 0) - 1
+  if (!below || r.top < window.innerHeight * 0.6) return
+  const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  window.scrollTo({ top: window.scrollY + r.top - 16, behavior: smooth ? 'smooth' : 'auto' })
+}
+
 /* ---------- week strip ---------- */
 
 const week = computed(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart.value, i)))
@@ -111,7 +130,7 @@ const navBtn =
   <div v-else class="flex flex-wrap items-start gap-4 sm:gap-6">
     <section aria-label="ปฏิทิน" class="flex min-w-0 flex-[999_1_100%] flex-col gap-3 sm:flex-[3_1_560px]">
       <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
-        <h2 aria-live="polite" class="m-0 text-[24px] leading-normal font-bold whitespace-nowrap sm:text-[28px]">
+        <h2 aria-live="polite" class="m-0 text-[1.5rem] leading-normal font-bold whitespace-nowrap sm:text-[1.75rem]">
           {{ heading }}
         </h2>
         <div class="flex items-center gap-1.5 sm:gap-2">
@@ -140,12 +159,12 @@ const navBtn =
       <!-- desktop: month grid -->
       <template v-if="isSm">
         <div class="grid grid-cols-7 gap-2">
-          <div v-for="w in WEEKDAY_SHORT" :key="w" class="py-1 text-center text-[13px] font-semibold">{{ w }}</div>
+          <div v-for="w in WEEKDAY_SHORT" :key="w" class="py-1 text-center text-[0.8125rem] font-semibold">{{ w }}</div>
           <button
             v-for="c in cells"
             :key="c.iso"
             type="button"
-            class="box-border flex min-h-26.5 min-w-0 flex-col items-stretch gap-1 rounded-xl border-2 p-1.5 text-left"
+            class="box-border flex min-h-18 min-w-0 flex-col items-stretch gap-1 rounded-xl border-2 p-1.5 text-left lg:min-h-26.5"
             :class="[
               c.iso === selected ? 'bg-sel shadow-brutal' : c.inMonth ? 'bg-white' : 'bg-off',
               !c.inMonth && c.iso !== selected && 'border-[#8a8780]',
@@ -155,14 +174,14 @@ const navBtn =
             :aria-label="countLabel(c.iso)"
             :data-day="c.iso"
             :tabindex="c.iso === focusIso ? 0 : -1"
-            @click="pickCell(c)"
+            @click="onCellClick($event, c)"
             @keydown="onCellKey($event, c)"
           >
             <span
-              class="box-border flex h-6.5 min-w-6.5 items-center justify-center self-start rounded-full border-2 px-1.5 text-[13px] font-semibold"
+              class="box-border flex h-6.5 min-w-6.5 items-center justify-center self-start rounded-full border-2 px-1.5 text-[0.8125rem] font-semibold"
               :class="[
                 c.iso === today ? 'border-ink bg-accent text-ink' : 'border-transparent',
-                !c.inMonth && c.iso !== today && 'text-[#6b6862]',
+                (!c.inMonth || c.iso < today) && c.iso !== today && 'text-[#6b6862]',
               ]"
             >
               {{ c.num }}
@@ -170,19 +189,19 @@ const navBtn =
             <span
               v-for="t in on(c.iso).slice(0, 2)"
               :key="t.id"
-              class="box-border block h-6 overflow-hidden rounded-md border-2 px-1.5 text-[12px] leading-5 font-semibold text-ellipsis whitespace-nowrap"
+              class="box-border block h-7 overflow-hidden rounded-md border-2 px-1.5 text-[0.75rem] leading-6 font-semibold text-ellipsis whitespace-nowrap"
               :class="chipClass(t)"
               :title="t.title"
             >
               {{ t.title }}
             </span>
-            <span v-if="on(c.iso).length > 2" class="pl-0.5 text-[12px] font-semibold">
+            <span v-if="on(c.iso).length > 2" class="pl-0.5 text-[0.75rem] font-semibold">
               +{{ on(c.iso).length - 2 }} งาน
             </span>
           </button>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3.5 text-[12px] font-semibold">
+        <div class="flex flex-wrap items-center gap-3.5 text-[0.75rem] font-semibold">
           <span class="flex items-center gap-1.5">
             <span class="box-border size-4 rounded border-2 bg-high"></span>สำคัญมาก
           </span>
@@ -214,9 +233,9 @@ const navBtn =
           :aria-label="countLabel(iso)"
           @click="pickWeekDay(iso)"
         >
-          <span class="text-[12px] font-semibold">{{ WEEKDAY_SHORT[parseISO(iso).getDay()] }}</span>
+          <span class="text-[0.75rem] font-semibold">{{ WEEKDAY_SHORT[parseISO(iso).getDay()] }}</span>
           <span
-            class="box-border flex size-6.5 items-center justify-center rounded-full border-2 text-[16px] leading-none font-semibold"
+            class="box-border flex size-6.5 items-center justify-center rounded-full border-2 text-[1rem] leading-none font-semibold"
             :class="iso === today ? 'border-ink bg-accent' : 'border-transparent'"
           >
             {{ parseISO(iso).getDate() }}
@@ -234,6 +253,7 @@ const navBtn =
     </section>
 
     <aside
+      ref="panel"
       class="box-border flex min-w-0 flex-[1_1_100%] flex-col sm:flex-[1_1_360px] sm:rounded-2xl sm:border-2 sm:bg-white sm:p-4.5 sm:shadow-brutal"
     >
       <DayPanel :selected="selected" />

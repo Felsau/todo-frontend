@@ -17,5 +17,8 @@ export function useMedia(query: string): Ref<boolean> {
   return flag
 }
 
-/** true from 640px up (Tailwind `sm`): popovers, dialogs and the month grid. */
-export const useIsSm = () => useMedia('(min-width: 640px)')
+/**
+ * true from 640px up (Tailwind `sm`): popovers, dialogs and the month grid. Written in rem like
+ * Tailwind's own breakpoint, so a bigger browser font size switches both at the same width.
+ */
+export const useIsSm = () => useMedia('(min-width: 40rem)')

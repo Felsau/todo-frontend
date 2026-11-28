@@ -69,7 +69,38 @@
   animation: flash-outline 1.6s ease-out;
 }
 
+/*
+ * A button that cannot be pressed yet keeps its full outline but goes quiet: off white, grey
+ * text and border, no shadow (QA round 3, UI 1). Unlayered so it wins over colour utilities.
+ */
+.btn-primary:disabled,
+.btn-pill:disabled,
+.icon-btn:disabled {
+  background: var(--color-off);
+  color: #6b6862;
+  border-color: #8a8780;
+  box-shadow: none;
+}
+
+/*
+ * Windows high contrast (forced colours) wipes every background, which is how the app shows
+ * the chosen view, filter, day and done toggle. Paint those in the system highlight colours (UI 4).
+ */
+@media (forced-colors: active) {
+  [aria-current='page'],
+  [aria-pressed='true'] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+}
+
 @layer base {
+  /* Light design only: tell browsers not to invert it in their own dark modes (SEO 8). */
+  :root {
+    color-scheme: only light;
+  }
   *,
   ::before,
   ::after {
@@ -124,14 +155,11 @@
     border-radius: 0.75rem;
     background: var(--color-ink);
     padding-inline: 1.25rem;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 700;
     color: #fff;
     box-shadow: var(--shadow-brutal-accent);
     white-space: nowrap;
-  }
-  .btn-primary:disabled {
-    opacity: 0.45;
   }
   @media (prefers-reduced-motion: no-preference) {
     .btn-primary {
@@ -167,12 +195,9 @@
     border-radius: 999px;
     background: #fff;
     padding-inline: 1rem;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
     white-space: nowrap;
-  }
-  .btn-pill:disabled {
-    opacity: 0.45;
   }
 
   /* Square 44px icon button on cards. */
@@ -188,9 +213,6 @@
     background: #fff;
     padding: 0;
   }
-  .icon-btn:disabled {
-    opacity: 0.45;
-  }
 
   /* Option chip inside pickers and dialogs: yellow plus a check when selected. */
   .opt {
@@ -203,7 +225,7 @@
     border-radius: 999px;
     background: #fff;
     padding-inline: 0.875rem;
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
     white-space: nowrap;
   }
@@ -222,7 +244,7 @@
   }
 
   .label {
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
   }
 }

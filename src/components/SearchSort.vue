@@ -13,7 +13,7 @@ const sortId = useId()
 
 <template>
   <div class="flex flex-wrap items-center gap-2.5" :class="compact && 'flex-col items-stretch gap-2'">
-    <div class="relative" :class="compact ? 'w-full' : 'w-60'">
+    <div class="relative" :class="compact ? 'w-full' : 'w-52'">
       <label :for="searchId" class="sr-only">ค้นหารายการ</label>
       <Icon name="search" :size="18" class="pointer-events-none absolute top-3 left-3.25" />
       <input
@@ -23,7 +23,7 @@ const sortId = useId()
         autocomplete="off"
         placeholder="ค้นหา..."
         data-search-input
-        class="box-border h-11 w-full rounded-full border-2 bg-white pr-3.5 pl-10 text-[16px] font-semibold sm:text-[14px]"
+        class="box-border h-11 w-full rounded-full border-2 bg-white pr-3.5 pl-10 text-[1rem] font-semibold sm:text-[0.875rem]"
       />
     </div>
     <div class="flex items-center gap-2">
@@ -32,7 +32,7 @@ const sortId = useId()
         <select
           :id="sortId"
           :value="sort"
-          class="box-border h-11 w-full appearance-none rounded-full border-2 bg-white pr-9 pl-3.5 text-[16px] font-semibold sm:text-[14px]"
+          class="box-border h-11 w-full appearance-none rounded-full border-2 bg-white pr-9 pl-3.5 text-[1rem] font-semibold sm:text-[0.875rem]"
           @change="sort = ($event.target as HTMLSelectElement).value as SortKey"
         >
           <option v-for="s in SORTS" :key="s.key" :value="s.key">{{ s.label }}</option>

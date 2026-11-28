@@ -15,6 +15,7 @@ const PATHS = {
   wifiOff: 'M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0M12 19h.01M3 3l18 18',
   spinner: 'M12 3a9 9 0 1 0 9 9',
   arrowUp: 'M12 19V5M5 12l7-7 7 7',
+  users: 'M9 11a4 4 0 1 0 0-8a4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6',
 } as const
 
 export type IconName = keyof typeof PATHS
@@ -29,6 +30,7 @@ withDefaults(defineProps<{ name: IconName; size?: number; stroke?: number }>(), 
   <svg
     :width="size"
     :height="size"
+    :style="{ width: `${size / 16}rem`, height: `${size / 16}rem` }"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"

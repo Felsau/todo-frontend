@@ -107,7 +107,7 @@ const triggerProps = () => ({
           :aria-label="props.label"
           class="absolute inset-x-0 bottom-0 flex flex-col gap-3.5 rounded-t-[20px] border-2 border-b-0 bg-white px-5 pt-5 pb-7"
         >
-          <h2 class="m-0 text-[20px] leading-normal font-bold">{{ props.label }}</h2>
+          <h2 class="m-0 text-[1.25rem] leading-normal font-bold">{{ props.label }}</h2>
           <slot :close="close" />
         </div>
       </div>

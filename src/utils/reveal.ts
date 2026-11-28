@@ -7,12 +7,17 @@ export function cardOf(id: number): HTMLElement | null {
   return document.querySelector<HTMLElement>(`[data-todo-id="${id}"]`)
 }
 
-/** The card next to this one (or before it, for the last card), as a todo id. */
+/**
+ * The card next to this one (or before it, for the last card), as a todo id. The list view is
+ * cut into date groups, so the search runs over every card of the list, across groups.
+ */
 export function neighbourOf(id: number): number | null {
   const el = cardOf(id)
-  const sib = (el?.nextElementSibling ?? null) as HTMLElement | null
-  const prev = (el?.previousElementSibling ?? null) as HTMLElement | null
-  const pick = sib?.dataset.todoId ? sib : prev?.dataset.todoId ? prev : null
+  if (!el) return null
+  const scope = el.closest('[data-card-list]') ?? el.parentElement
+  const cards = scope ? Array.from(scope.querySelectorAll<HTMLElement>('[data-todo-id]')) : []
+  const i = cards.indexOf(el)
+  const pick = i < 0 ? null : (cards[i + 1] ?? cards[i - 1] ?? null)
   return pick ? Number(pick.dataset.todoId) : null
 }
 

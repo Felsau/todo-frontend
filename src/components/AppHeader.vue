@@ -31,19 +31,22 @@ async function onSearchToggle() {
 }
 
 const navLink =
-  'flex h-11 flex-1 items-center justify-center gap-2 px-5 text-[14px] font-semibold text-ink no-underline sm:flex-none aria-[current=page]:bg-ink aria-[current=page]:text-white'
+  'flex h-11 flex-1 items-center justify-center gap-2 px-5 text-[0.875rem] font-semibold text-ink no-underline sm:flex-none aria-[current=page]:bg-ink aria-[current=page]:text-white'
 </script>
 
 <template>
   <header class="flex flex-wrap items-end justify-between gap-x-3 gap-y-4 sm:gap-x-5">
-    <div class="order-1 flex flex-col gap-0.5 sm:gap-1">
-      <p class="m-0 text-[13px] leading-normal font-semibold text-muted">{{ eyebrowDate(today) }}</p>
-      <h1 tabindex="-1" class="m-0 text-[40px] leading-[1.2] font-bold focus:outline-none lg:text-[56px]">ลุยงาน!</h1>
+    <!-- On phones the date gets a line of its own, so the title, search and sticker share the next one (UI 9). -->
+    <div class="order-1 flex flex-col gap-0.5 max-sm:contents sm:gap-1">
+      <p class="m-0 text-[0.8125rem] leading-normal font-semibold text-muted max-sm:order-0 max-sm:-mb-3.5 max-sm:w-full">
+        {{ eyebrowDate(today) }}
+      </p>
+      <h1 tabindex="-1" class="m-0 text-[2.5rem] leading-[1.2] font-bold focus:outline-none max-sm:order-1 lg:text-[3.5rem]">ลุยงาน!</h1>
     </div>
 
     <nav
       aria-label="มุมมอง"
-      class="order-3 flex w-full overflow-hidden rounded-full border-2 bg-white sm:order-2 sm:ml-auto sm:w-auto sm:shadow-brutal-sm"
+      class="order-3 flex w-full overflow-hidden rounded-full border-2 bg-white sm:w-auto sm:shadow-brutal-sm"
     >
       <RouterLink to="/" :class="navLink">
         <Icon name="list" :size="18" class="hidden sm:block" />
@@ -55,7 +58,8 @@ const navLink =
       </RouterLink>
     </nav>
 
-    <div class="order-2 flex items-center gap-2.5 sm:order-3 sm:gap-3.5">
+    <!-- Stickers come before the view switch, so the switch stays put at the right edge (UI 9). -->
+    <div class="order-2 flex items-center gap-2.5 sm:ml-auto sm:gap-3.5">
       <button
         v-if="onList && status === 'ready'"
         type="button"
@@ -77,8 +81,8 @@ const navLink =
         v-else-if="status === 'ready'"
         class="-rotate-4 rounded-xl border-2 bg-accent px-3 py-1.5 text-center shadow-brutal-sm sm:px-4 sm:py-2 sm:shadow-brutal"
       >
-        <div class="text-[26px] leading-[1.2] font-bold sm:text-[30px]">{{ doneCount }}/{{ total }}</div>
-        <div class="text-[12px] leading-tight font-bold">เสร็จแล้ว</div>
+        <div class="text-[1.625rem] leading-[1.2] font-bold sm:text-[1.875rem]">{{ doneCount }}/{{ total }}</div>
+        <div class="text-[0.75rem] leading-tight font-bold">เสร็จแล้ว</div>
       </div>
 
       <button
@@ -88,8 +92,8 @@ const navLink =
         :aria-label="`ดูงานเลยกำหนด ${overdueCount} รายการ`"
         @click="showOverdue"
       >
-        <span class="block text-[30px] leading-[1.2] font-bold">{{ overdueCount }}</span>
-        <span class="block text-[12px] leading-tight font-bold">เลยกำหนด</span>
+        <span class="block text-[1.875rem] leading-[1.2] font-bold">{{ overdueCount }}</span>
+        <span class="block text-[0.75rem] leading-tight font-bold">เลยกำหนด</span>
       </button>
     </div>
   </header>

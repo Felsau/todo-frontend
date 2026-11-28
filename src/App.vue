@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
 import DetailDialog from './components/DetailDialog.vue'
 import Icon from './components/Icon.vue'
+import SharedNotice from './components/SharedNotice.vue'
 import ToastHost from './components/ToastHost.vue'
 import { useDetail } from './composables/useDetail'
 import { useTodos } from './composables/useTodos'
@@ -65,6 +66,7 @@ onBeforeUnmount(() => {
   <div class="min-h-dvh bg-paper px-5 pt-9 pb-28 sm:px-6 sm:pt-11">
     <main class="mx-auto flex max-w-280 flex-col gap-4 sm:gap-6">
       <AppHeader />
+      <SharedNotice />
       <RouterView />
     </main>
   </div>

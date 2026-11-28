@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { PRIORITY_RANK, type FilterKey, type SortKey, type Todo } from '../types'
-import { isOverdue, today } from '../utils/date'
+import { addDays, isOverdue, today } from '../utils/date'
 import { useTodos } from './useTodos'
 
 /* Filter, search and sort state of the list view. All of it runs in the browser. */
@@ -28,6 +28,23 @@ function matches(done: boolean, t: Todo, f: FilterKey): boolean {
   if (f === 'done') return done
   if (f === 'overdue') return isOverdue(t.due_date, done, today.value)
   return true
+}
+
+export type GroupKey = 'all' | 'overdue' | 'today' | 'week' | 'later' | 'none' | 'done'
+export interface ListGroup {
+  key: GroupKey
+  /** Empty for the single group of the other sorts. */
+  label: string
+  items: Todo[]
+}
+const GROUP_LABEL: Record<GroupKey, string> = {
+  all: '',
+  overdue: 'เลยกำหนด',
+  today: 'วันนี้',
+  week: 'ภายใน 7 วัน',
+  later: 'ภายหลัง',
+  none: 'ไม่มีกำหนดส่ง',
+  done: 'เสร็จแล้ว',
 }
 
 const FAR = '9999-12-31'
@@ -66,6 +83,36 @@ export function useListUi() {
       })
   })
 
+  /**
+   * Sorted by due date, the list is cut into labelled groups (เลยกำหนด, วันนี้, ภายใน 7 วัน,
+   * ภายหลัง, ไม่มีกำหนดส่ง, เสร็จแล้ว), each its own grid, so the order in time reads at a glance
+   * instead of zigzagging across three coloured columns (QA round 3, UI 2).
+   * Other sorts give one group without a heading.
+   */
+  const groups = computed<ListGroup[]>(() => {
+    if (sort.value !== 'due') return visible.value.length ? [{ key: 'all', label: '', items: visible.value }] : []
+    const t = today.value
+    const week = addDays(t, 7)
+    const out: ListGroup[] = []
+    for (const todo of visible.value) {
+      const key: GroupKey = effDone(todo)
+        ? 'done'
+        : !todo.due_date
+          ? 'none'
+          : todo.due_date < t
+            ? 'overdue'
+            : todo.due_date === t
+              ? 'today'
+              : todo.due_date <= week
+                ? 'week'
+                : 'later'
+      const last = out[out.length - 1]
+      if (last?.key === key) last.items.push(todo)
+      else out.push({ key, label: GROUP_LABEL[key], items: [todo] })
+    }
+    return out
+  })
+
   const emptyText = computed(() => {
     const q = query.value.trim()
     if (q) return `ไม่พบงานที่ตรงกับ “${q}”`
@@ -80,5 +127,5 @@ export function useListUi() {
     query.value = ''
   }
 
-  return { filter, query, sort, searchOpen, counts, visible, emptyText, toggleSearch }
+  return { filter, query, sort, searchOpen, counts, visible, groups, emptyText, toggleSearch }
 }

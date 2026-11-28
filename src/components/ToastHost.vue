@@ -92,7 +92,7 @@ function onKeydown(e: KeyboardEvent) {
       ref="box"
       :key="toast.id"
       data-toast
-      class="pointer-events-auto box-border flex max-w-full min-w-0 items-center gap-3 rounded-[14px] border-2 py-1.5 pr-1.5 pl-4 text-[14px] leading-normal font-semibold text-white max-sm:w-full sm:gap-4 sm:pl-4.5"
+      class="pointer-events-auto box-border flex max-w-full min-w-0 items-center gap-3 rounded-[14px] border-2 py-1.5 pr-1.5 pl-4 text-[0.875rem] leading-normal font-semibold text-white max-sm:w-full sm:gap-4 sm:pl-4.5"
       :class="toast.kind === 'error' ? 'bg-danger shadow-brutal-sm' : 'bg-ink shadow-brutal-accent'"
       @mouseenter="hovered = true"
       @mouseleave="hovered = false"
@@ -108,7 +108,7 @@ function onKeydown(e: KeyboardEvent) {
         v-if="toast.actionLabel"
         ref="actionBtn"
         type="button"
-        class="h-11 flex-none rounded-[10px] border-2 px-3.5 text-[14px] font-semibold"
+        class="h-11 flex-none rounded-[10px] border-2 px-3.5 text-[0.875rem] font-semibold"
         :class="toast.kind === 'error' ? 'border-white bg-white text-danger' : 'border-white bg-accent text-ink'"
         @click="act"
       >
@@ -117,7 +117,7 @@ function onKeydown(e: KeyboardEvent) {
       <button
         v-else-if="toast.kind === 'error'"
         type="button"
-        class="h-11 flex-none rounded-[10px] border-2 border-white bg-transparent px-3.5 text-[14px] font-semibold text-white"
+        class="h-11 flex-none rounded-[10px] border-2 border-white bg-transparent px-3.5 text-[0.875rem] font-semibold text-white"
         aria-label="ปิดข้อความแจ้งเตือน"
         @click="dismissToast"
       >

@@ -7,9 +7,11 @@ import { dueInfo, today } from '../utils/date'
 import Icon from './Icon.vue'
 
 /*
- * One todo card. From 640px it is the block card of the desktop design
- * (toggle, priority pill, pencil, bin, title, due chip). Below 640px it is the
- * single row of the mobile design (toggle, title and meta, chevron, bin).
+ * One todo card. From 640px it is the block card of the desktop design: the title sits on the
+ * toggle's line with pencil and bin at the right, and the priority and due chips under the
+ * title, so a card is about 100px tall instead of 155px (QA round 3, UI 2). Below 640px it is
+ * the single row of the mobile design (toggle, title and chips, chevron, bin).
+ * Long titles stop after three lines; the full title shows on hover and in the detail (UI 12).
  */
 const props = defineProps<{ todo: Todo }>()
 const { toggle, remove, busy, locked } = useTodos()
@@ -33,10 +35,10 @@ function onBodyClick() {
 </script>
 
 <template>
-  <!-- desktop and tablet card -->
+  <!-- desktop and tablet card: toggle, title and buttons on the first line, chips under the title -->
   <li
     v-if="isSm"
-    class="flex flex-col gap-3 rounded-2xl border-2 px-3 pt-3 pb-3.5 motion-safe:transition motion-safe:duration-100"
+    class="grid grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_1fr] gap-x-2 gap-y-2 rounded-2xl border-2 px-3 pt-3 pb-3.5 motion-safe:transition motion-safe:duration-100"
     :class="
       todo.is_completed
         ? 'bg-white'
@@ -44,23 +46,30 @@ function onBodyClick() {
     "
     :data-todo-id="todo.id"
   >
-    <div class="flex items-center gap-2">
-      <button
-        type="button"
-        class="icon-btn"
-        :aria-pressed="todo.is_completed"
-        :aria-label="toggleLabel()"
-        :aria-busy="busy[todo.id] || undefined"
-        :disabled="locked[todo.id]"
-        @click="toggle(todo.id)"
-      >
-        <Icon v-if="busy[todo.id]" name="spinner" :size="22" :stroke="3" />
-        <Icon v-else-if="todo.is_completed" name="check" :size="22" :stroke="3.5" />
-      </button>
-      <span class="box-border inline-flex h-7 items-center rounded-full border-2 bg-white px-2.5 text-[12px] font-semibold">
-        {{ PRIORITY_LABEL[todo.priority] }}
-      </span>
-      <span class="flex-1"></span>
+    <button
+      type="button"
+      class="icon-btn"
+      :aria-pressed="todo.is_completed"
+      :aria-label="toggleLabel()"
+      :aria-busy="busy[todo.id] || undefined"
+      :disabled="locked[todo.id]"
+      @click="toggle(todo.id)"
+    >
+      <Icon v-if="busy[todo.id]" name="spinner" :size="22" :stroke="3" />
+      <Icon v-else-if="todo.is_completed" name="check" :size="22" :stroke="3.5" />
+    </button>
+
+    <!-- The title and the chips also open the detail (the pencil is the keyboard path); their text can be selected. -->
+    <span
+      class="line-clamp-3 self-start pt-1.5 text-left text-[1.1875rem] leading-normal font-bold wrap-anywhere decoration-2"
+      :class="[todo.is_completed && 'line-through', locked[todo.id] ? 'cursor-not-allowed' : 'cursor-pointer']"
+      :title="todo.title"
+      @click="onBodyClick"
+    >
+      {{ todo.title }}
+    </span>
+
+    <div class="flex flex-wrap justify-end gap-2 self-start">
       <button
         type="button"
         class="icon-btn"
@@ -82,21 +91,17 @@ function onBodyClick() {
       </button>
     </div>
 
-    <!-- The whole card body also opens the detail (the pencil is the keyboard path); its text can be selected. -->
     <div
-      class="flex min-h-11 flex-1 flex-col gap-3 px-1 py-0 text-left"
+      class="col-start-2 col-end-4 flex flex-wrap items-end gap-1.5 self-stretch"
       :class="locked[todo.id] ? 'cursor-not-allowed' : 'cursor-pointer'"
       @click="onBodyClick"
     >
-      <span
-        class="text-[19px] leading-normal font-bold wrap-anywhere decoration-2"
-        :class="todo.is_completed && 'line-through'"
-      >
-        {{ todo.title }}
+      <span class="box-border inline-flex min-h-7 items-center rounded-full border-2 bg-white px-2.5 text-[0.75rem] font-semibold whitespace-nowrap">
+        {{ PRIORITY_LABEL[todo.priority] }}
       </span>
       <span
         v-if="due()"
-        class="mt-auto box-border inline-flex h-7 items-center gap-1.5 self-start rounded-full border-2 px-2.5 text-[12px] font-semibold"
+        class="box-border inline-flex min-h-7 items-center gap-1.5 rounded-full border-2 px-2.5 text-[0.75rem] font-semibold whitespace-nowrap"
         :class="due()!.overdue ? 'bg-danger text-white' : 'bg-white text-ink'"
       >
         <Icon name="calendar" :size="13" :stroke="3" />
@@ -124,30 +129,35 @@ function onBodyClick() {
       <Icon v-if="busy[todo.id]" name="spinner" :size="22" :stroke="3" />
       <Icon v-else-if="todo.is_completed" name="check" :size="22" :stroke="3.5" />
     </button>
+    <!-- No aria-label: the name is "แก้ไข:" plus every word shown, so voice control can use what is on screen (UI 14). -->
     <button
       type="button"
       class="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 border-0 bg-transparent px-1.5 py-1 text-left disabled:cursor-not-allowed"
-      :aria-label="`แก้ไข: ${todo.title}`"
       :data-open-todo="todo.id"
       :disabled="locked[todo.id]"
       @click="openDetail(todo.id)"
     >
+      <span class="sr-only">แก้ไข: </span>
       <span class="flex min-w-0 flex-1 flex-col gap-1">
         <span
-          class="text-[16px] leading-normal font-bold wrap-anywhere decoration-2"
+          class="line-clamp-3 text-[1rem] leading-normal font-bold wrap-anywhere decoration-2"
           :class="todo.is_completed && 'line-through'"
+          :title="todo.title"
         >
           {{ todo.title }}
         </span>
         <span class="flex flex-wrap items-center gap-1.5">
+          <span class="box-border inline-flex min-h-7 items-center rounded-full border-2 bg-white px-2 text-[0.75rem] font-semibold whitespace-nowrap">
+            {{ PRIORITY_LABEL[todo.priority] }}
+          </span>
           <span
             v-if="due()"
-            class="box-border inline-flex h-6 items-center rounded-full border-2 px-2 text-[12px] font-semibold"
+            class="box-border inline-flex min-h-7 items-center gap-1 rounded-full border-2 px-2 text-[0.75rem] font-semibold whitespace-nowrap"
             :class="due()!.overdue ? 'bg-danger text-white' : 'bg-white text-ink'"
           >
+            <Icon name="calendar" :size="12" :stroke="3" />
             {{ due()!.label }}
           </span>
-          <span class="text-[12px] font-semibold">{{ PRIORITY_LABEL[todo.priority] }}</span>
         </span>
       </span>
       <Icon name="chevronRight" :size="16" :stroke="3" />

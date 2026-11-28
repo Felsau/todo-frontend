@@ -138,6 +138,18 @@ export function isOverdue(due: string | null, done: boolean, todayISO: string): 
   return !done && !!due && due < todayISO
 }
 
+/**
+ * A due date picked before today. The task is allowed (writing down old jobs is normal), but it
+ * will show as overdue straight away, so the pickers say so first (QA round 3, UI 6).
+ * Same test as isOverdue for a task that is not done.
+ */
+export function isPastDate(due: string | null, todayISO: string): boolean {
+  return isOverdue(due, false, todayISO)
+}
+
+/** The red hint under a date picker when the chosen date has already passed. */
+export const PAST_DATE_HINT = 'วันที่เลือกผ่านมาแล้ว งานนี้จะขึ้นว่าเลยกำหนดทันที'
+
 /** The four quick options of the shared due picker. */
 export function dueOptions(todayISO: string): { value: string; label: string }[] {
   return [

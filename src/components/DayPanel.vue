@@ -5,7 +5,7 @@ import { useDetail } from '../composables/useDetail'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_HEX, PRIORITY_LABEL, type Priority, type Todo } from '../types'
-import { dayMonthLong, diffDays, isOverdue, shortDate, today, weekdayName } from '../utils/date'
+import { PAST_DATE_HINT, dayMonthLong, diffDays, isOverdue, isPastDate, shortDate, today, weekdayName } from '../utils/date'
 import { isBlank } from '../utils/text'
 import AnchoredPicker from './AnchoredPicker.vue'
 import Icon from './Icon.vue'
@@ -25,6 +25,8 @@ const isSm = useIsSm()
 const dayTasks = computed(() => on(props.selected))
 const nice = computed(() => shortDate(props.selected))
 const offset = computed(() => diffDays(today.value, props.selected))
+/** Adding to a day already gone makes an overdue task: allowed, but said up front (UI 6). */
+const past = computed(() => isPastDate(props.selected, today.value))
 
 const eyebrow = computed(() => {
   const d = offset.value
@@ -88,10 +90,10 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
   <div class="flex flex-col gap-3.5">
     <div class="flex items-end justify-between gap-2 sm:block">
       <div>
-        <p class="m-0 text-[13px] leading-normal font-semibold text-muted">{{ eyebrow }}</p>
-        <h2 class="m-0 text-[20px] leading-normal font-bold sm:mt-0.5 sm:text-[24px]">{{ title }}</h2>
+        <p class="m-0 text-[0.8125rem] leading-normal font-semibold text-muted">{{ eyebrow }}</p>
+        <h2 class="m-0 text-[1.25rem] leading-normal font-bold sm:mt-0.5 sm:text-[1.5rem]">{{ title }}</h2>
       </div>
-      <p class="m-0 text-[13px] leading-normal font-semibold text-muted sm:mt-1">{{ countText }}</p>
+      <p class="m-0 text-[0.8125rem] leading-normal font-semibold text-muted sm:mt-1">{{ countText }}</p>
     </div>
 
     <form class="flex flex-col gap-2" @submit.prevent="submit">
@@ -104,7 +106,7 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
           maxlength="200"
           autocomplete="off"
           :placeholder="`เพิ่มงานวันที่ ${nice}`"
-          class="field box-border h-12 min-w-0 flex-1 text-[16px] shadow-brutal-sm sm:h-11 sm:rounded-[10px] sm:px-3 sm:text-[14px] sm:shadow-none"
+          class="field box-border h-12 min-w-0 flex-1 text-[1rem] shadow-brutal-sm sm:h-11 sm:rounded-[10px] sm:px-3 sm:text-[0.875rem] sm:shadow-none"
         />
         <button
           type="submit"
@@ -116,16 +118,17 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <span
-          class="box-border inline-flex h-11 items-center gap-2 rounded-xl border-2 bg-white px-3 text-[13px] font-semibold"
+          class="box-border inline-flex h-11 items-center gap-2 rounded-xl border-2 px-3 text-[0.8125rem] font-semibold"
+          :class="past ? 'border-danger bg-[#ffe3e3] text-[#8f1d1d]' : 'bg-white'"
         >
           <Icon name="calendarGrid" :size="18" />
-          วันที่ {{ nice }}
+          วันที่ {{ nice }}<template v-if="past"> เลยมาแล้ว</template>
         </span>
         <AnchoredPicker label="ความสำคัญ">
           <template #trigger="{ triggerProps }">
             <button
               type="button"
-              class="box-border inline-flex h-11 items-center gap-2 rounded-xl border-2 bg-white px-3 text-[13px] font-semibold"
+              class="box-border inline-flex h-11 items-center gap-2 rounded-xl border-2 bg-white px-3 text-[0.8125rem] font-semibold"
               v-bind="triggerProps"
               :aria-label="`ความสำคัญ: ${PRIORITY_LABEL[priority]}`"
             >
@@ -143,6 +146,7 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
           </template>
         </AnchoredPicker>
       </div>
+      <p v-if="past" data-past-hint class="m-0 text-[0.8125rem] leading-normal font-semibold text-danger">{{ PAST_DATE_HINT }}</p>
     </form>
 
     <ul class="m-0 flex list-none flex-col gap-2.5 p-0 pr-1 pb-1">
@@ -173,23 +177,24 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
           type="button"
           class="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 border-0 bg-transparent px-1.5 py-0.5 text-left disabled:cursor-not-allowed"
           :tabindex="isSm ? -1 : undefined"
-          :aria-label="isSm ? undefined : `แก้ไข: ${t.title}`"
           :data-open-todo="isSm ? undefined : t.id"
           :disabled="locked[t.id]"
           @click="openDetail(t.id)"
         >
+          <!-- The button's name holds every word it shows, for voice control (UI 14, SEO 12). -->
+          <span v-if="!isSm" class="sr-only">แก้ไข: </span>
           <span class="flex min-w-0 flex-1 flex-col gap-0.5">
             <span
-              class="text-[15px] leading-normal font-bold wrap-anywhere decoration-2 sm:text-[14px]"
+              class="text-[0.9375rem] leading-normal font-bold wrap-anywhere decoration-2 sm:text-[0.875rem]"
               :class="t.is_completed && 'line-through'"
             >
               {{ t.title }}
             </span>
             <span class="flex flex-wrap items-center gap-1.5">
-              <span class="text-[12px] font-semibold">{{ PRIORITY_LABEL[t.priority] }}</span>
+              <span class="text-[0.75rem] font-semibold">{{ PRIORITY_LABEL[t.priority] }}</span>
               <span
                 v-if="overdue(t)"
-                class="inline-block rounded-md border-2 bg-danger px-2 py-px text-[12px] font-semibold text-white"
+                class="inline-block rounded-md border-2 bg-danger px-2 py-px text-[0.75rem] font-semibold text-white"
               >
                 เลยกำหนด
               </span>
@@ -220,7 +225,7 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
       </li>
       <li
         v-if="dayTasks.length === 0"
-        class="rounded-[14px] border-2 border-dashed px-3 py-5.5 text-center text-[14px] leading-normal font-semibold sm:rounded-xl sm:py-5"
+        class="rounded-[14px] border-2 border-dashed px-3 py-5.5 text-center text-[0.875rem] leading-normal font-semibold sm:rounded-xl sm:py-5"
       >
         {{ emptyText }}
       </li>
@@ -228,7 +233,7 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
 
     <!-- mobile: the next few tasks after the selected day -->
     <section v-if="!isSm && upcoming.length > 0" class="flex flex-col gap-2">
-      <h3 class="m-0 text-[13px] leading-normal font-semibold">ถัดไป</h3>
+      <h3 class="m-0 text-[0.8125rem] leading-normal font-semibold">ถัดไป</h3>
       <button
         v-for="u in upcoming"
         :key="u.id"
@@ -239,17 +244,17 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
         @click="openDetail(u.id)"
       >
         <span class="box-border size-3 flex-none rounded-[3px] border-2" :class="PRIORITY_BG[u.priority]"></span>
-        <span class="min-w-0 flex-1 truncate text-[13px] font-semibold">{{ u.title }}</span>
-        <span class="flex-none text-[12px] font-semibold">{{ shortDate(u.due_date!) }}</span>
+        <span class="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold">{{ u.title }}</span>
+        <span class="flex-none text-[0.75rem] font-semibold">{{ shortDate(u.due_date!) }}</span>
       </button>
     </section>
 
     <!-- undated tasks: hidden when there are none -->
     <section v-if="undated.length > 0" class="flex flex-col gap-2 sm:border-t-2 sm:pt-3">
       <div class="flex items-center gap-2">
-        <h3 class="m-0 text-[13px] leading-normal font-semibold">ไม่มีกำหนดส่ง</h3>
+        <h3 class="m-0 text-[0.8125rem] leading-normal font-semibold">ไม่มีกำหนดส่ง</h3>
         <span
-          class="box-border flex h-6 min-w-6 items-center justify-center rounded-full border-2 bg-white px-1.5 text-[12px] font-semibold max-sm:hidden"
+          class="box-border flex h-6 min-w-6 items-center justify-center rounded-full border-2 bg-white px-1.5 text-[0.75rem] font-semibold max-sm:hidden"
         >
           {{ undated.length }}
         </span>
@@ -258,7 +263,7 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
         v-for="u in undated"
         :key="u.id"
         type="button"
-        class="box-border flex min-h-11.5 w-full items-center gap-2.5 rounded-xl border-2 px-2.5 text-left text-[13px] leading-normal font-semibold max-sm:bg-white sm:min-h-11"
+        class="box-border flex min-h-11.5 w-full items-center gap-2.5 rounded-xl border-2 px-2.5 text-left text-[0.8125rem] leading-normal font-semibold max-sm:bg-white sm:min-h-11"
         :class="isSm && PRIORITY_BG[u.priority]"
         :aria-label="`แก้ไข: ${u.title}`"
         :data-open-todo="u.id"

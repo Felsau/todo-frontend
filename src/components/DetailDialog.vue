@@ -33,6 +33,7 @@ const ids = {
   due: `${uid}-due`,
   pri: `${uid}-pri`,
   notes: `${uid}-notes`,
+  notesHint: `${uid}-notes-hint`,
 }
 
 const todo = computed(() => (detailId.value === null ? undefined : todos.value.find((t) => t.id === detailId.value)))
@@ -279,8 +280,8 @@ const sectionClass = toRef(() =>
         :class="band"
       >
         <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-          <h2 :id="ids.heading" class="m-0 text-[15px] leading-normal font-bold sm:text-[16px]">รายละเอียดงาน</h2>
-          <span class="rounded-full border-2 bg-white px-3 py-0.5 text-[13px] leading-normal font-semibold">
+          <h2 :id="ids.heading" class="m-0 text-[0.9375rem] leading-normal font-bold sm:text-[1rem]">รายละเอียดงาน</h2>
+          <span class="rounded-full border-2 bg-white px-3 py-0.5 text-[0.8125rem] leading-normal font-semibold">
             {{ priLabel }}
           </span>
         </div>
@@ -303,14 +304,14 @@ const sectionClass = toRef(() =>
               autocomplete="off"
               :aria-describedby="ids.titleCount"
               :aria-invalid="!!titleError"
-              class="field box-border h-12.5 text-[17px] font-bold sm:text-[20px]"
+              class="field box-border h-12.5 text-[1.0625rem] font-bold sm:text-[1.25rem]"
               :class="draft.is_completed && 'line-through'"
             />
             <div class="flex justify-between gap-2">
-              <span v-if="titleError" role="alert" class="text-[12px] leading-normal font-semibold text-danger">
+              <span v-if="titleError" role="alert" class="text-[0.75rem] leading-normal font-semibold text-danger">
                 {{ titleError }}
               </span>
-              <span :id="ids.titleCount" class="ml-auto text-[12px] font-semibold text-muted">
+              <span :id="ids.titleCount" class="ml-auto text-[0.75rem] font-semibold text-muted">
                 {{ draft.title.length }}/200
               </span>
             </div>
@@ -323,7 +324,7 @@ const sectionClass = toRef(() =>
                 v-for="o in statusOptions"
                 :key="o.label"
                 type="button"
-                class="opt rounded-xl text-[14px]"
+                class="opt rounded-xl text-[0.875rem]"
                 :aria-pressed="draft.is_completed === o.value"
                 @click="draft.is_completed = o.value"
               >
@@ -336,9 +337,9 @@ const sectionClass = toRef(() =>
           <div class="flex flex-col gap-2">
             <span :id="ids.due" class="label">กำหนดส่ง</span>
             <div role="group" :aria-labelledby="ids.due" class="flex">
-              <DuePicker v-model="draft.due" variant="inline" />
+              <DuePicker v-model="draft.due" variant="inline" :done="draft.is_completed" />
             </div>
-            <span v-if="fieldErrors.due_date" role="alert" class="text-[12px] leading-normal font-semibold text-danger">
+            <span v-if="fieldErrors.due_date" role="alert" class="text-[0.75rem] leading-normal font-semibold text-danger">
               {{ fieldErrors.due_date }}
             </span>
           </div>
@@ -348,34 +349,40 @@ const sectionClass = toRef(() =>
             <div role="group" :aria-labelledby="ids.pri">
               <PriorityPicker v-model="draft.priority" :layout="isSm ? 'row' : 'grid'" />
             </div>
-            <span v-if="fieldErrors.priority" role="alert" class="text-[12px] leading-normal font-semibold text-danger">
+            <span v-if="fieldErrors.priority" role="alert" class="text-[0.75rem] leading-normal font-semibold text-danger">
               {{ fieldErrors.priority }}
             </span>
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <label :for="ids.notes" class="label">โน้ต</label>
+            <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+              <label :for="ids.notes" class="label">โน้ต</label>
+              <span :id="ids.notesHint" class="text-[0.75rem] leading-normal font-semibold text-muted">
+                ทุกคนที่เปิดลิงก์นี้เห็นโน้ตด้วย
+              </span>
+            </div>
             <textarea
               :id="ids.notes"
+              :aria-describedby="ids.notesHint"
               v-model="draft.notes"
               rows="5"
               :maxlength="NOTES_MAX"
               :placeholder="isSm ? 'จดรายละเอียด ลิงก์ หรือขั้นตอนเพิ่มเติม...' : 'จดรายละเอียดเพิ่มเติม...'"
-              class="box-border w-full rounded-xl border-2 bg-white px-3 py-2.5 text-[16px] leading-normal font-medium max-sm:resize-none sm:resize-y sm:px-3.5 sm:py-3 sm:text-[15px]"
+              class="box-border w-full rounded-xl border-2 bg-white px-3 py-2.5 text-[1rem] leading-normal font-medium max-sm:resize-none sm:resize-y sm:px-3.5 sm:py-3 sm:text-[0.9375rem]"
               @paste="onNotesPaste"
             ></textarea>
             <div v-if="notesCut || draft.notes.length >= NOTES_MAX - 200" class="flex justify-between gap-2">
-              <span v-if="notesCut" role="alert" class="text-[12px] leading-normal font-semibold text-danger">
+              <span v-if="notesCut" role="alert" class="text-[0.75rem] leading-normal font-semibold text-danger">
                 ข้อความยาวเกิน 2000 ตัวอักษร ส่วนท้ายถูกตัดออก
               </span>
-              <span class="ml-auto text-[12px] font-semibold text-muted">{{ draft.notes.length }}/{{ NOTES_MAX }}</span>
+              <span class="ml-auto text-[0.75rem] font-semibold text-muted">{{ draft.notes.length }}/{{ NOTES_MAX }}</span>
             </div>
-            <span v-if="fieldErrors.notes" role="alert" class="text-[12px] leading-normal font-semibold text-danger">
+            <span v-if="fieldErrors.notes" role="alert" class="text-[0.75rem] leading-normal font-semibold text-danger">
               {{ fieldErrors.notes }}
             </span>
           </div>
 
-          <div class="flex flex-wrap gap-x-5 gap-y-1 text-[12px] leading-normal font-semibold text-muted">
+          <div class="flex flex-wrap gap-x-5 gap-y-1 text-[0.75rem] leading-normal font-semibold text-muted">
             <span>สร้างเมื่อ {{ stamp(todo!.created_at) }}</span>
             <span>แก้ไขล่าสุด {{ stamp(todo!.updated_at) }}</span>
           </div>
@@ -388,10 +395,10 @@ const sectionClass = toRef(() =>
             aria-label="ยืนยันการปิด"
             class="flex flex-wrap items-center gap-2 rounded-xl border-2 bg-normal px-2.5 py-2"
           >
-            <span class="flex-1 text-[14px] leading-normal font-bold">ทิ้งการแก้ไขไหม?</span>
+            <span class="flex-1 text-[0.875rem] leading-normal font-bold">ทิ้งการแก้ไขไหม?</span>
             <button
               type="button"
-              class="box-border h-11 shrink-0 rounded-xl border-2 bg-danger px-3.5 text-[13px] font-semibold whitespace-nowrap text-white"
+              class="box-border h-11 shrink-0 rounded-xl border-2 bg-danger px-3.5 text-[0.8125rem] font-semibold whitespace-nowrap text-white"
               @click="closeDetail()"
             >
               ทิ้งการแก้ไข
@@ -399,7 +406,7 @@ const sectionClass = toRef(() =>
             <button
               ref="keepButton"
               type="button"
-              class="box-border h-11 shrink-0 rounded-xl border-2 bg-white px-3.5 text-[13px] font-semibold whitespace-nowrap"
+              class="box-border h-11 shrink-0 rounded-xl border-2 bg-white px-3.5 text-[0.8125rem] font-semibold whitespace-nowrap"
               @click="keepEditing"
             >
               แก้ต่อ
@@ -409,7 +416,7 @@ const sectionClass = toRef(() =>
           <div
             v-if="saveFailed"
             role="alert"
-            class="rounded-xl border-2 border-danger bg-[#ffe3e3] px-3.5 py-2.5 text-[14px] leading-normal font-semibold text-[#8f1d1d]"
+            class="rounded-xl border-2 border-danger bg-[#ffe3e3] px-3.5 py-2.5 text-[0.875rem] leading-normal font-semibold text-[#8f1d1d]"
           >
             บันทึกไม่สำเร็จ ข้อมูลที่แก้ยังอยู่ครบ ลองกดบันทึกอีกครั้ง
           </div>
@@ -417,7 +424,7 @@ const sectionClass = toRef(() =>
           <div class="flex items-center gap-2 sm:gap-2.5">
             <button
               type="button"
-              class="box-border inline-flex h-11 flex-none items-center gap-1.5 rounded-xl border-2 border-danger bg-white px-3 text-[14px] font-semibold text-danger sm:gap-2 sm:px-3.5"
+              class="box-border inline-flex h-11 flex-none items-center gap-1.5 rounded-xl border-2 border-danger bg-white px-3 text-[0.875rem] font-semibold text-danger sm:gap-2 sm:px-3.5"
               @click="deleteTodo"
             >
               <Icon name="trash" :size="18" :stroke="2.5" />
@@ -426,7 +433,7 @@ const sectionClass = toRef(() =>
             <span class="flex-1 max-sm:hidden"></span>
             <button
               type="button"
-              class="box-border h-11 flex-none rounded-xl border-2 bg-white px-4 text-[14px] font-semibold"
+              class="box-border h-11 flex-none rounded-xl border-2 bg-white px-4 text-[0.875rem] font-semibold"
               @click="requestClose"
             >
               ปิด
