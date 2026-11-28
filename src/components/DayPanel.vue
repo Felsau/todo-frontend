@@ -13,7 +13,9 @@ import PriorityPicker from './PriorityPicker.vue'
 
 /*
  * The selected day: its add form and its tasks (side panel on desktop, agenda on mobile).
- * Desktop also lists undated todos; mobile adds the "ถัดไป" list and the undated section.
+ * Desktop also lists undated todos; mobile adds the next few tasks after the day and the undated
+ * ones. Those extra lists sit in their own boxes under a heading that says they are not tasks of
+ * the selected day, and can be ticked there too (QA round 4, P19).
  */
 const props = defineProps<{ selected: string }>()
 
@@ -64,7 +66,7 @@ function submit() {
   const t = draft.value.trim()
   if (isBlank(t)) return
   const sent = { title: t, priority: priority.value }
-  add(
+  const id = add(
     { title: t, priority: sent.priority, due_date: props.selected },
     {
       // A failed add puts the typed values back, unless the box is already in use again (R2-05).
@@ -76,12 +78,16 @@ function submit() {
       },
     },
   )
+  if (id === undefined) return // not added (no internet): the text stays
+  // The priority stays for the next task of this day; it starts fresh when you leave the calendar (P8).
   draft.value = ''
-  priority.value = 'normal' // reset after every add, like the list view
   input.value?.focus()
 }
 
 const overdue = (t: Todo) => isOverdue(t.due_date, t.is_completed, today.value)
+/* The boxes for tasks that are not of the selected day: dashed, on the paper colour. */
+const box = 'flex flex-col gap-2 rounded-2xl border-2 border-dashed bg-paper p-2.5 sm:bg-off'
+const row = 'box-border flex items-center gap-1.5 rounded-xl border-2 bg-white p-1'
 /** A toggle keeps one name; aria-pressed tells whether the task is done. */
 const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่าเสร็จ: ${t.title}`
 </script>
@@ -117,12 +123,10 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
         </button>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <span
-          class="box-border inline-flex h-11 items-center gap-2 rounded-xl border-2 px-3 text-[0.8125rem] font-semibold"
-          :class="past ? 'border-danger bg-[#ffe3e3] text-[#8f1d1d]' : 'bg-white'"
-        >
-          <Icon name="calendarGrid" :size="18" />
-          วันที่ {{ nice }}<template v-if="past"> เลยมาแล้ว</template>
+        <!-- Plain words, not a pill: the date comes from the day you picked and is not a button (U6). -->
+        <span class="inline-flex min-h-11 items-center gap-1.5 text-[0.8125rem] font-semibold" :class="past && 'text-danger'" data-day-target>
+          <Icon name="calendarGrid" :size="17" />
+          ลงวันที่ {{ nice }}<template v-if="past"> ซึ่งเลยมาแล้ว</template>
         </span>
         <AnchoredPicker label="ความสำคัญ">
           <template #trigger="{ triggerProps }">
@@ -231,50 +235,68 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
       </li>
     </ul>
 
-    <!-- mobile: the next few tasks after the selected day -->
-    <section v-if="!isSm && upcoming.length > 0" class="flex flex-col gap-2">
-      <h3 class="m-0 text-[0.8125rem] leading-normal font-semibold">ถัดไป</h3>
-      <button
-        v-for="u in upcoming"
-        :key="u.id"
-        type="button"
-        class="box-border flex min-h-11.5 w-full items-center gap-2.5 rounded-xl border-2 bg-white px-2.5 text-left"
-        :aria-label="`แก้ไข: ${u.title}`"
-        :data-open-todo="u.id"
-        @click="openDetail(u.id)"
-      >
-        <span class="box-border size-3 flex-none rounded-[3px] border-2" :class="PRIORITY_BG[u.priority]"></span>
-        <span class="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold">{{ u.title }}</span>
-        <span class="flex-none text-[0.75rem] font-semibold">{{ shortDate(u.due_date!) }}</span>
-      </button>
+    <!-- mobile: the next few tasks after the selected day, in a box of their own -->
+    <section v-if="!isSm && upcoming.length > 0" :class="box" aria-labelledby="day-next-heading" data-day-next>
+      <div>
+        <h3 id="day-next-heading" class="m-0 text-[0.875rem] leading-normal font-bold">งานถัดไปหลังวันที่ {{ nice }}</h3>
+        <p class="m-0 text-[0.75rem] leading-normal font-semibold text-muted">ไม่ใช่งานของวันที่เลือก ดูวันส่งได้ทางขวา</p>
+      </div>
+      <div v-for="u in upcoming" :key="u.id" :class="row" :data-todo-id="u.id">
+        <button
+          type="button"
+          class="icon-btn"
+          :aria-pressed="u.is_completed"
+          :aria-label="toggleLabel(u)"
+          :disabled="locked[u.id]"
+          @click="toggle(u.id)"
+        >
+          <Icon v-if="busy[u.id]" name="spinner" :size="20" :stroke="3" />
+        </button>
+        <button
+          type="button"
+          class="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent px-1 text-left"
+          :data-open-todo="u.id"
+          @click="openDetail(u.id)"
+        >
+          <span class="sr-only">แก้ไข: </span>
+          <span class="box-border size-3 flex-none rounded-[3px] border-2" :class="PRIORITY_BG[u.priority]" aria-hidden="true"></span>
+          <span class="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold">{{ u.title }}</span>
+          <span class="flex-none rounded-full border-2 bg-white px-2 text-[0.75rem] font-semibold">{{ shortDate(u.due_date!) }}</span>
+        </button>
+      </div>
     </section>
 
     <!-- undated tasks: hidden when there are none -->
-    <section v-if="undated.length > 0" class="flex flex-col gap-2 sm:border-t-2 sm:pt-3">
-      <div class="flex items-center gap-2">
-        <h3 class="m-0 text-[0.8125rem] leading-normal font-semibold">ไม่มีกำหนดส่ง</h3>
-        <span
-          class="box-border flex h-6 min-w-6 items-center justify-center rounded-full border-2 bg-white px-1.5 text-[0.75rem] font-semibold max-sm:hidden"
-        >
-          {{ undated.length }}
-        </span>
+    <section v-if="undated.length > 0" :class="box" aria-labelledby="day-undated-heading" data-day-undated>
+      <div>
+        <h3 id="day-undated-heading" class="m-0 flex items-center gap-2 text-[0.875rem] leading-normal font-bold">
+          งานที่ไม่มีกำหนดส่ง
+          <span class="text-[0.75rem] font-semibold text-muted">{{ undated.length }} งาน</span>
+        </h3>
+        <p class="m-0 text-[0.75rem] leading-normal font-semibold text-muted">ไม่ได้อยู่ในวันไหน จึงแสดงไว้ทุกวัน</p>
       </div>
-      <button
-        v-for="u in undated"
-        :key="u.id"
-        type="button"
-        class="box-border flex min-h-11.5 w-full items-center gap-2.5 rounded-xl border-2 px-2.5 text-left text-[0.8125rem] leading-normal font-semibold max-sm:bg-white sm:min-h-11"
-        :class="isSm && PRIORITY_BG[u.priority]"
-        :aria-label="`แก้ไข: ${u.title}`"
-        :data-open-todo="u.id"
-        @click="openDetail(u.id)"
-      >
-        <span
-          class="box-border size-3 flex-none rounded-[3px] border-2 sm:hidden"
-          :class="PRIORITY_BG[u.priority]"
-        ></span>
-        <span class="min-w-0 flex-1 truncate sm:whitespace-normal">{{ u.title }}</span>
-      </button>
+      <div v-for="u in undated" :key="u.id" :class="row" :data-todo-id="u.id">
+        <button
+          type="button"
+          class="icon-btn"
+          :aria-pressed="u.is_completed"
+          :aria-label="toggleLabel(u)"
+          :disabled="locked[u.id]"
+          @click="toggle(u.id)"
+        >
+          <Icon v-if="busy[u.id]" name="spinner" :size="20" :stroke="3" />
+        </button>
+        <button
+          type="button"
+          class="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent px-1 text-left"
+          :data-open-todo="u.id"
+          @click="openDetail(u.id)"
+        >
+          <span class="sr-only">แก้ไข: </span>
+          <span class="box-border size-3 flex-none rounded-[3px] border-2" :class="PRIORITY_BG[u.priority]" aria-hidden="true"></span>
+          <span class="min-w-0 flex-1 text-[0.8125rem] leading-normal font-semibold wrap-anywhere">{{ u.title }}</span>
+        </button>
+      </div>
     </section>
   </div>
 </template>

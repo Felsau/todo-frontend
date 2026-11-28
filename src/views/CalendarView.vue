@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import DayPanel from '../components/DayPanel.vue'
 import Icon from '../components/Icon.vue'
 import ListSkeleton from '../components/ListSkeleton.vue'
 import LoadError from '../components/LoadError.vue'
-import { useCalendarTodos } from '../composables/useCalendarTodos'
+import { todayRequest, useCalendarTodos } from '../composables/useCalendarTodos'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
-import { WEEKDAY_SHORT, addDays, dayMonthLong, monthLabel, parseISO, startOfWeek, today, toISO, weekLabel } from '../utils/date'
+import { WEEKDAY_SHORT, addDays, dayMonthLong, monthLabel, parseISO, shortDate, startOfWeek, today, toISO, weekLabel } from '../utils/date'
 
 /*
  * Calendar view. From 640px: a month grid (Sunday first) with a side panel.
@@ -98,9 +98,14 @@ async function onCellClick(e: MouseEvent, c: Cell) {
 
 const week = computed(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart.value, i)))
 
+/**
+ * Another week: select today when it is in that week, otherwise its first day (Sunday), not the
+ * same weekday as before, which looked like a choice the app made for you (QA round 4, P18).
+ */
 function shiftWeek(n: number) {
   weekStart.value = addDays(weekStart.value, n * 7)
-  selected.value = addDays(selected.value, n * 7)
+  const end = addDays(weekStart.value, 6)
+  selected.value = today.value >= weekStart.value && today.value <= end ? today.value : weekStart.value
   monthStart.value = firstOfMonth(selected.value)
 }
 
@@ -113,6 +118,14 @@ function goToday() {
   selected.value = today.value
   monthStart.value = firstOfMonth(today.value)
   weekStart.value = startOfWeek(today.value)
+}
+// The yellow header sticker on this view selects today.
+watch(todayRequest, goToday)
+
+/** Up to three dots per day; more than three shows two and "+N" (QA round 4, P17). */
+const dotsOf = (iso: string) => {
+  const list = on(iso)
+  return list.length > 3 ? { dots: list.slice(0, 2), more: list.length - 2 } : { dots: list, more: 0 }
 }
 
 const heading = computed(() => (isSm.value ? monthLabel(monthStart.value) : weekLabel(weekStart.value)))
@@ -165,10 +178,8 @@ const navBtn =
             :key="c.iso"
             type="button"
             class="box-border flex min-h-18 min-w-0 flex-col items-stretch gap-1 rounded-xl border-2 p-1.5 text-left lg:min-h-26.5"
-            :class="[
-              c.iso === selected ? 'bg-sel shadow-brutal' : c.inMonth ? 'bg-white' : 'bg-off',
-              !c.inMonth && c.iso !== selected && 'border-[#8a8780]',
-            ]"
+            :class="c.iso === selected ? 'bg-sel shadow-brutal' : 'bg-white'"
+            :data-out-month="c.inMonth ? undefined : ''"
             :aria-pressed="c.iso === selected"
             :aria-current="c.iso === today ? 'date' : undefined"
             :aria-label="countLabel(c.iso)"
@@ -181,10 +192,11 @@ const navBtn =
               class="box-border flex h-6.5 min-w-6.5 items-center justify-center self-start rounded-full border-2 px-1.5 text-[0.8125rem] font-semibold"
               :class="[
                 c.iso === today ? 'border-ink bg-accent text-ink' : 'border-transparent',
-                (!c.inMonth || c.iso < today) && c.iso !== today && 'text-[#6b6862]',
+                c.iso < today && c.iso !== today && 'text-[#6b6862]',
               ]"
             >
-              {{ c.num }}
+              <!-- A day of the next or last month says which month, instead of looking switched off (P20). -->
+              {{ c.inMonth ? c.num : shortDate(c.iso) }}
             </span>
             <span
               v-for="t in on(c.iso).slice(0, 2)"
@@ -240,15 +252,24 @@ const navBtn =
           >
             {{ parseISO(iso).getDate() }}
           </span>
-          <span class="flex h-2 gap-0.75">
+          <span class="flex h-2.5 items-center gap-0.75">
             <span
-              v-for="t in on(iso).slice(0, 3)"
+              v-for="t in dotsOf(iso).dots"
               :key="t.id"
               class="box-border size-2 rounded-full border-[1.5px]"
               :class="dotClass(t)"
             ></span>
+            <span v-if="dotsOf(iso).more" class="text-[0.625rem] leading-none font-bold">+{{ dotsOf(iso).more }}</span>
           </span>
         </button>
+      </div>
+      <!-- What the dots mean, as on the desktop grid (P17). -->
+      <div v-if="!isSm" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.75rem] font-semibold" data-dot-legend>
+        <span class="flex items-center gap-1"><span class="box-border size-2.5 rounded-full border-[1.5px] bg-high"></span>สำคัญมาก</span>
+        <span class="flex items-center gap-1"><span class="box-border size-2.5 rounded-full border-[1.5px] bg-normal"></span>ปกติ</span>
+        <span class="flex items-center gap-1"><span class="box-border size-2.5 rounded-full border-[1.5px] bg-low"></span>ไม่รีบ</span>
+        <span class="flex items-center gap-1"><span class="box-border size-2.5 rounded-full border-[1.5px] bg-danger"></span>เลยกำหนด</span>
+        <span class="flex items-center gap-1"><span class="box-border size-2.5 rounded-full border-[1.5px] bg-white"></span>เสร็จแล้ว</span>
       </div>
     </section>
 

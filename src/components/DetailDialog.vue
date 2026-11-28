@@ -7,7 +7,7 @@ import { useHistoryModal } from '../composables/useHistoryModal'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_LABEL, type Priority, type TodoPatch } from '../types'
-import { stamp } from '../utils/date'
+import { addDays, isOverdue, stamp, today } from '../utils/date'
 import { isBlank } from '../utils/text'
 import DuePicker from './DuePicker.vue'
 import Icon from './Icon.vue'
@@ -18,10 +18,12 @@ import PriorityPicker from './PriorityPicker.vue'
  * Fields: ชื่องาน, สถานะ, กำหนดส่ง, ความสำคัญ, โน้ต.
  * Esc, the X, the ปิด button, the backdrop and the phone's Back button all close it,
  * asking first when there are unsaved changes.
+ * สถานะ saves at once, like the tick on a card (QA round 4, U8), and says when the task was
+ * completed (P16). An overdue task can be moved to today or tomorrow in one tap (owner decision 5).
  */
 const NOTES_MAX = 2000
 const { detailId, closeDetail } = useDetail()
-const { todos, toast, saveDetail, remove, forget, showToast, dismissToast } = useTodos()
+const { todos, toast, saveDetail, remove, forget, showToast, dismissToast, toggle, reschedule } = useTodos()
 const isSm = useIsSm()
 
 const uid = useId()
@@ -86,6 +88,7 @@ watch(
     showConfirm.value = false
     saving.value = false
     notesCut.value = false
+    statusNote.value = ''
     clearErrors()
     // An old error toast would only cover the dialog; the dialog shows its own errors (R2-07).
     if (toast.value?.kind === 'error') dismissToast()
@@ -125,7 +128,47 @@ watch(
 )
 
 const band = computed(() => (draft.is_completed ? 'bg-white' : PRIORITY_BG[draft.priority]))
-const priLabel = computed(() => (draft.is_completed ? 'เสร็จแล้ว' : PRIORITY_LABEL[draft.priority]))
+
+/*
+ * Changes made outside the form (สถานะ, the move buttons, their undo, a failed save rolling
+ * back) flow into the draft, unless the person has edited that field here.
+ */
+watch(
+  () => todo.value?.is_completed,
+  (v) => {
+    if (v === undefined) return
+    draft.is_completed = v
+    original.value = { ...original.value, is_completed: v }
+  },
+)
+watch(
+  () => todo.value?.due_date,
+  (v) => {
+    if (v === undefined || draft.due !== original.value.due) return
+    draft.due = v ?? ''
+    original.value = { ...original.value, due: v ?? '' }
+  },
+)
+
+/** What สถานะ just did, read out inside the dialog (the page's live region is behind the modal). */
+const statusNote = ref('')
+function setStatus(done: boolean) {
+  const t = todo.value
+  if (!t || t.is_completed === done) return
+  toggle(t.id, { quiet: true })
+  if (t.is_completed === done) statusNote.value = done ? 'บันทึกแล้ว งานนี้เสร็จแล้ว' : 'บันทึกแล้ว งานนี้ยังไม่เสร็จ'
+}
+
+const overdueNow = computed(() => {
+  const t = todo.value
+  return !!t && draft.due === original.value.due && isOverdue(t.due_date, t.is_completed, today.value)
+})
+function move(days: 0 | 1) {
+  const t = todo.value
+  if (!t) return
+  const msg = days === 0 ? `ย้าย “${t.title}” มาวันนี้แล้ว` : `ย้าย “${t.title}” ไปพรุ่งนี้แล้ว`
+  if (reschedule(t.id, addDays(today.value, days), msg)) statusNote.value = msg
+}
 
 async function askDiscard() {
   showConfirm.value = true
@@ -281,8 +324,17 @@ const sectionClass = toRef(() =>
       >
         <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
           <h2 :id="ids.heading" class="m-0 text-[0.9375rem] leading-normal font-bold sm:text-[1rem]">รายละเอียดงาน</h2>
-          <span class="rounded-full border-2 bg-white px-3 py-0.5 text-[0.8125rem] leading-normal font-semibold">
-            {{ priLabel }}
+          <!-- Importance always, and done as a badge of its own, so neither replaces the other (U7). -->
+          <span class="rounded-full border-2 bg-white px-3 py-0.5 text-[0.8125rem] leading-normal font-semibold" data-detail-priority>
+            {{ PRIORITY_LABEL[draft.priority] }}
+          </span>
+          <span
+            v-if="draft.is_completed"
+            class="inline-flex items-center gap-1 rounded-full border-2 bg-ink px-3 py-0.5 text-[0.8125rem] leading-normal font-semibold text-white"
+            data-detail-done
+          >
+            <Icon name="check" :size="13" :stroke="3.5" />
+            เสร็จแล้ว
           </span>
         </div>
         <button type="button" class="icon-btn" aria-label="ปิด" @click="requestClose">
@@ -318,7 +370,10 @@ const sectionClass = toRef(() =>
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <span :id="ids.status" class="label">สถานะ</span>
+            <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+              <span :id="ids.status" class="label">สถานะ</span>
+              <span class="text-[0.75rem] leading-normal font-semibold text-muted">กดแล้วบันทึกทันที</span>
+            </div>
             <div role="group" :aria-labelledby="ids.status" class="grid grid-cols-2 gap-2">
               <button
                 v-for="o in statusOptions"
@@ -326,18 +381,31 @@ const sectionClass = toRef(() =>
                 type="button"
                 class="opt rounded-xl text-[0.875rem]"
                 :aria-pressed="draft.is_completed === o.value"
-                @click="draft.is_completed = o.value"
+                @click="setStatus(o.value)"
               >
                 <Icon v-if="draft.is_completed === o.value" name="check" :size="14" :stroke="3.5" />
                 {{ o.label }}
               </button>
             </div>
+            <span v-if="todo!.is_completed && todo!.completed_at" class="text-[0.8125rem] leading-normal font-semibold" data-completed-at>
+              เสร็จเมื่อ {{ stamp(todo!.completed_at) }}
+            </span>
+            <span class="sr-only" role="status">{{ statusNote }}</span>
           </div>
 
           <div class="flex flex-col gap-2">
             <span :id="ids.due" class="label">กำหนดส่ง</span>
             <div role="group" :aria-labelledby="ids.due" class="flex">
               <DuePicker v-model="draft.due" variant="inline" :done="draft.is_completed" />
+            </div>
+            <div
+              v-if="overdueNow"
+              class="flex flex-wrap items-center gap-2 rounded-xl border-2 border-danger bg-[#ffe3e3] px-3 py-2 text-[#8f1d1d]"
+              data-move-row
+            >
+              <span class="flex-[1_1_100%] text-[0.8125rem] leading-normal font-semibold sm:flex-1">เลยกำหนดแล้ว ย้ายวันส่งได้ทันที</span>
+              <button type="button" class="btn-pill h-10 border-ink bg-white px-3 text-[0.8125rem] text-ink" @click="move(0)">ย้ายมาวันนี้</button>
+              <button type="button" class="btn-pill h-10 border-ink bg-white px-3 text-[0.8125rem] text-ink" @click="move(1)">ย้ายไปพรุ่งนี้</button>
             </div>
             <span v-if="fieldErrors.due_date" role="alert" class="text-[0.75rem] leading-normal font-semibold text-danger">
               {{ fieldErrors.due_date }}

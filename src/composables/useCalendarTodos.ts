@@ -1,7 +1,10 @@
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { PRIORITY_BG, PRIORITY_RANK, type Todo } from '../types'
 import { isOverdue, today } from '../utils/date'
 import { useTodos } from './useTodos'
+
+/** Bumped by the yellow header sticker: the calendar then selects today. */
+export const todayRequest = ref(0)
 
 /* Todos grouped by due date for the calendar, ordered like the day list in the prototypes. */
 export function useCalendarTodos() {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
-import { PAST_DATE_HINT, dueOptions, fullShortDate, isPastDate, today } from '../utils/date'
+import { PAST_DATE_HINT, dueOptions, fullShortDate, isPastDate, shortDate, today } from '../utils/date'
 import Icon from './Icon.vue'
 
 /*
@@ -67,6 +67,8 @@ function choose(value: string) {
       >
         <Icon v-if="props.modelValue === o.value" name="check" :size="14" :stroke="3.5" />
         {{ o.label }}
+        <!-- The real date, so "อีก 7 วัน" reads as one day and not a span of days (QA round 4, P9). -->
+        <span v-if="o.value" class="font-medium text-[#333]">{{ shortDate(o.value) }}</span>
       </button>
       <template v-if="props.variant === 'inline'">
         <label :for="inputId" class="sr-only">เลือกวัน</label>
