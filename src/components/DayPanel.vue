@@ -44,10 +44,10 @@ const title = computed(() =>
 )
 const countText = computed(() => {
   const list = dayTasks.value
-  return list.length ? `เสร็จ ${list.filter((t) => t.is_completed).length} จาก ${list.length} งาน` : 'ยังไม่มีงาน'
+  return list.length ? `เสร็จ ${list.filter((t) => t.is_completed).length} จาก ${list.length} งาน` : ''
 })
 const emptyText = computed(() =>
-  offset.value === 0 ? 'วันนี้ว่าง เพิ่มงานด้านบนได้เลย' : `วันที่ ${nice.value} ว่าง เพิ่มงานด้านบนได้เลย`,
+  offset.value === 0 ? 'วันนี้ยังไม่มีงาน เพิ่มงานด้านบนได้เลย' : `วันที่ ${nice.value} ยังไม่มีงาน เพิ่มงานด้านบนได้เลย`,
 )
 
 const upcoming = computed(() =>
@@ -99,7 +99,8 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
         <p class="m-0 text-[0.8125rem] leading-normal font-semibold text-muted">{{ eyebrow }}</p>
         <h2 class="m-0 text-[1.25rem] leading-normal font-bold sm:mt-0.5 sm:text-[1.5rem]">{{ title }}</h2>
       </div>
-      <p class="m-0 text-[0.8125rem] leading-normal font-semibold text-muted sm:mt-1">{{ countText }}</p>
+      <!-- Empty days say so once, in the dashed box below (owner check 2026-11-28). -->
+      <p v-if="countText" class="m-0 text-[0.8125rem] leading-normal font-semibold text-muted sm:mt-1">{{ countText }}</p>
     </div>
 
     <form class="flex flex-col gap-2" @submit.prevent="submit">
@@ -126,7 +127,7 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
         <!-- Plain words, not a pill: the date comes from the day you picked and is not a button (U6). -->
         <span class="inline-flex min-h-11 items-center gap-1.5 text-[0.8125rem] font-semibold" :class="past && 'text-danger'" data-day-target>
           <Icon name="calendarGrid" :size="17" />
-          ลงวันที่ {{ nice }}<template v-if="past"> ซึ่งเลยมาแล้ว</template>
+          ลงวันที่ {{ nice }}
         </span>
         <AnchoredPicker label="ความสำคัญ">
           <template #trigger="{ triggerProps }">

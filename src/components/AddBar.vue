@@ -29,7 +29,8 @@ defineExpose({ focus: () => input.value?.focus() })
 
 <template>
   <form
-    class="relative flex flex-col gap-2.5 sm:gap-3 sm:rounded-2xl sm:border-2 sm:bg-white sm:p-3.5 sm:pb-9 sm:shadow-brutal"
+    class="relative flex flex-col gap-2.5 sm:gap-3 sm:rounded-2xl sm:border-2 sm:bg-white sm:p-3.5 sm:shadow-brutal"
+    :class="pastDue && 'sm:pb-9'"
     @submit.prevent="submit"
   >
     <!-- Wraps only when the browser font size is very large, so the box keeps room for its text (UI 5). -->
@@ -89,7 +90,7 @@ defineExpose({ focus: () => input.value?.focus() })
       </AnchoredPicker>
       </div>
     </div>
-    <!-- Its own line that never moves the row above: kept free in the phone sheet, in a band kept free at the bottom inside the box from 640px (recheck 2, M3). -->
+    <!-- Its own line that never moves the rows above: kept free in the phone sheet; from 640px a band opens at the bottom of the box only while the hint shows (recheck 2, M3; an always empty band looked like a broken box, owner check 2026-11-28). -->
     <p
       :id="PAST_HINT_ID"
       :data-past-hint="pastDue ? '' : undefined"
