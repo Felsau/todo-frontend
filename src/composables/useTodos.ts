@@ -434,13 +434,14 @@ function toggle(id: number, opts: ToggleOptions = {}) {
 /**
  * Changes the due date (and with it the time, when given), at once, and rolls back on failure.
  * time undefined keeps the task's time; a time that has already passed on the new day is dropped,
- * so "move to today" does not land a task straight back in overdue (task times).
+ * so "move to today" does not land a task straight back in overdue (task times). exact skips that
+ * rule: an undo puts the date and time back as they were, even a time that has passed (round 9, C1).
  */
-function setDue(id: number, due: string | null, time?: string | null): boolean {
+function setDue(id: number, due: string | null, time?: string | null, exact = false): boolean {
   const t = find(id)
   if (!t || locked[id]) return false
   let nextTime = time === undefined ? (t.due_time ?? null) : time
-  if (!due || (due === today.value && nextTime && nowTime.value > nextTime)) nextTime = null
+  if (!due || (!exact && due === today.value && nextTime && nowTime.value > nextTime)) nextTime = null
   if (t.due_date === due && (t.due_time ?? null) === nextTime) return false
   if (blockedOffline()) return false
   const prev = t.due_date
@@ -478,14 +479,16 @@ function setDue(id: number, due: string | null, time?: string | null): boolean {
  * Moves an overdue task to today or tomorrow in one tap, with a toast and "เลิกทำ"
  * (QA round 4, owner decision 5).
  */
-function reschedule(id: number, due: string, message: string): boolean {
+function reschedule(id: number, due: string, message: string): string | false {
   const prev = find(id)?.due_date ?? null
   const prevTime = find(id)?.due_time ?? null
   if (!setDue(id, due)) return false
-  offerChange(message, () => {
-    if (find(id)?.due_date === due && setDue(id, prev, prevTime)) say('เลิกทำแล้ว')
+  // A time that has already passed today is taken off; say so, so it does not just vanish (round 9, U4).
+  const said = prevTime && !find(id)?.due_time ? `${message} เอาเวลา ${prevTime} น. ออก เพราะผ่านไปแล้ว` : message
+  offerChange(said, () => {
+    if (find(id)?.due_date === due && setDue(id, prev, prevTime, true)) say('เลิกทำแล้ว')
   })
-  return true
+  return said
 }
 
 /** One undo toast for this deletion, joined with any deletions whose toast is still showing. */

@@ -8,7 +8,7 @@ import { todayRequest, useCalendarTodos } from '../composables/useCalendarTodos'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { flash } from '../utils/reveal'
-import { WEEKDAY_SHORT, addDays, dayMonthLong, monthLabel, parseISO, shortDate, startOfWeek, today, toISO, weekLabel } from '../utils/date'
+import { WEEKDAY_SHORT, addDays, dayMonthLong, monthLabel, parseISO, shortDate, startOfWeek, timeText, today, toISO, weekLabel } from '../utils/date'
 
 /*
  * Calendar view. From 640px: a month grid (Sunday first) with a side panel.
@@ -240,9 +240,10 @@ const navBtn =
                   ? 'h-7 whitespace-nowrap lg:line-clamp-2 lg:h-auto lg:max-h-13 lg:whitespace-normal lg:break-words'
                   : 'h-7 whitespace-nowrap',
               ]"
-              :title="t.due_time ? `${t.due_time} น. ${t.title}` : t.title"
+              :title="t.due_time ? `${timeText(t.due_time)} ${t.title}` : t.title"
             >
-              <span v-if="t.due_time" class="mr-1 font-bold">{{ t.due_time }}</span>{{ t.title }}
+              <!-- Title only: a month cell is too narrow for the time too (owner choice, round 9 U2); the day panel shows it. -->
+              {{ t.title }}
             </span>
             <span v-if="on(c.iso).length > 2" class="pl-0.5 text-[0.75rem] font-semibold">
               +{{ on(c.iso).length - 2 }} {{ moreUnit(on(c.iso).slice(2)) }}

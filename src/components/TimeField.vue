@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { timeText } from '../utils/date'
+import { awayFromThaiTime, timeText } from '../utils/date'
 import AnchoredPicker from './AnchoredPicker.vue'
 import Icon from './Icon.vue'
 import ThaiTimePicker from './ThaiTimePicker.vue'
@@ -12,6 +12,7 @@ import ThaiTimePicker from './ThaiTimePicker.vue'
 const props = withDefaults(defineProps<{ modelValue: string; past?: boolean; compact?: boolean }>(), { past: false, compact: false })
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
+const away = awayFromThaiTime()
 const value = computed({
   get: () => props.modelValue,
   set: (v: string) => emit('update:modelValue', v),
@@ -20,7 +21,8 @@ const value = computed({
 
 <template>
   <div class="flex items-center gap-2">
-    <span v-if="!props.compact" class="label" aria-hidden="true">เวลา</span>
+    <!-- Same width as the ความสำคัญ label on phones, so the two pills line up (round 9, U12). -->
+    <span v-if="!props.compact" class="label min-w-[4.25rem] sm:min-w-0" aria-hidden="true">เวลา</span>
     <AnchoredPicker label="เวลา">
       <template #trigger="{ triggerProps }">
         <button
@@ -28,7 +30,7 @@ const value = computed({
           class="btn-pill gap-1.5 pr-3 pl-3"
           :class="props.past ? 'border-danger bg-[#ffe3e3] text-[#8f1d1d]' : props.modelValue ? 'bg-accent' : ''"
           v-bind="triggerProps"
-          :aria-label="`เวลา: ${props.modelValue ? timeText(props.modelValue) : 'ไม่ระบุเวลา'}`"
+          :aria-label="`เวลา${away ? ' (เวลาประเทศไทย)' : ''}: ${props.modelValue ? timeText(props.modelValue) : 'ไม่ระบุเวลา'}`"
           data-time-trigger
         >
           <Icon name="clock" :size="15" :stroke="2.6" />

@@ -70,10 +70,12 @@ export const today = ref(bangkokDay())
 export const nowTime = ref(bangkokTime())
 
 function refreshToday() {
-  const t = bangkokTime()
-  if (t !== nowTime.value) nowTime.value = t
-  const now = bangkokDay()
+  // One clock reading for both, so midnight cannot fall between them (round 9, T11).
+  const at = new Date()
+  const t = bangkokTime(at)
+  const now = bangkokDay(at)
   if (now !== today.value) today.value = now
+  if (t !== nowTime.value) nowTime.value = t
 }
 if (typeof window !== 'undefined') {
   window.setInterval(refreshToday, 30_000)
@@ -166,7 +168,8 @@ export function dueInfo(due: string | null, done: boolean, todayISO: string, tim
   const at = time ? ` ${timeText(time)}` : ''
   if (done) return { label: nice + at, overdue: false }
   const d = diffDays(todayISO, due)
-  if (d < 0) return { label: `เลยกำหนด ${nice}`, overdue: true }
+  // A late task keeps its time too, like every other chip (round 9, T5).
+  if (d < 0) return { label: `เลยกำหนด ${nice}${at}`, overdue: true }
   if (d === 0) {
     if (time && nowTime.value > time) return { label: `เลยเวลา ${timeText(time)}`, overdue: true }
     return { label: 'วันนี้' + at, overdue: false }
@@ -198,7 +201,7 @@ export function isOverdue(due: string | null, done: boolean, todayISO: string, t
 export const dueKey = (due: string | null, time: string | null | undefined) => `${due ?? '9999-12-31'} ${time ?? '99:99'}`
 
 /** Add forms: today's chosen time has already passed. */
-export const pastTimeHint = (time: string) => `เวลา ${time} น. ของวันนี้ผ่านมาแล้ว งานที่เพิ่มจะขึ้นว่าเลยกำหนดทันที`
+export const pastTimeHint = (time: string) => `${time} น. ของวันนี้ผ่านไปแล้ว งานนี้จะเลยเวลาทันที`
 /** Today and this time has passed. */
 export const isPastTime = (due: string | null, time: string | null | undefined, todayISO: string) =>
   !!due && due === todayISO && !!time && nowTime.value > time

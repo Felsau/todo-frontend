@@ -59,7 +59,12 @@ const emptyText = computed(() =>
 const allUpcoming = computed(() =>
   todos.value
     .filter((t) => !t.is_completed && t.due_date && t.due_date > props.selected)
-    .sort((a, b) => (dueKey(a.due_date, a.due_time) < dueKey(b.due_date, b.due_time) ? -1 : 1)),
+    // Three way compare with an id tie break, so equal days keep a stable order (round 9, C4).
+    .sort((a, b) => {
+      const ka = dueKey(a.due_date, a.due_time)
+      const kb = dueKey(b.due_date, b.due_time)
+      return ka < kb ? -1 : ka > kb ? 1 : a.id - b.id
+    }),
 )
 /** Only the first three; the heading says so when there are more (round 6, L6). */
 const upcoming = computed(() => allUpcoming.value.slice(0, 3))
@@ -100,6 +105,8 @@ function submit() {
   if (id === undefined) return // not added (no internet): the text stays
   // The priority stays for the next task of this day; it starts fresh when you leave the calendar (P8).
   draft.value = ''
+  // A time that has passed today is not carried to the next task, as in the list (round 9, T9).
+  if (pastClock.value) time.value = ''
   input.value?.focus()
 }
 
@@ -149,6 +156,8 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
           <Icon name="calendarGrid" :size="17" />
           ลงวันที่ {{ nice }}
         </span>
+        <!-- Same order as the add sheet: date, time, priority (round 9, U8). -->
+        <TimeField v-model="time" :past="pastClock" compact />
         <AnchoredPicker label="ความสำคัญ">
           <template #trigger="{ triggerProps }">
             <button
@@ -170,7 +179,6 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
             <PriorityPicker v-model="priority" @pick="close()" />
           </template>
         </AnchoredPicker>
-        <TimeField v-model="time" :past="pastClock" compact />
       </div>
       <!-- No room kept for it before typing: an always empty band looks like a broken box (owner check 2026-11-28, round 6 N6). -->
       <p v-if="pastHint" id="day-past-hint" role="status" data-past-hint class="m-0 text-[0.8125rem] leading-normal font-semibold text-danger">{{ pastHint }}</p>
@@ -302,9 +310,9 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
           <!-- Already overdue (a past day is selected): red like everywhere else (round 6, L6). -->
           <span
             class="flex-none rounded-full border-2 px-2 text-[0.75rem] font-semibold"
-            :class="isOverdue(u.due_date, false, today) ? 'border-danger bg-danger text-white' : 'bg-white'"
+            :class="isOverdue(u.due_date, false, today, u.due_time) ? 'border-danger bg-danger text-white' : 'bg-white'"
           >
-            <span v-if="isOverdue(u.due_date, false, today)" class="sr-only">เลยกำหนด </span>{{ shortDate(u.due_date!) }}{{ u.due_time ? ` ${u.due_time}` : '' }}
+            <span v-if="isOverdue(u.due_date, false, today, u.due_time)" class="sr-only">เลยกำหนด </span>{{ shortDate(u.due_date!) }}{{ u.due_time ? ` ${timeText(u.due_time)}` : '' }}
           </span>
         </button>
       </div>

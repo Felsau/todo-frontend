@@ -7,7 +7,7 @@ import { useHistoryModal } from '../composables/useHistoryModal'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_LABEL, type Priority, type TodoPatch } from '../types'
-import { addDays, isOverdue, isPastTime, stamp, today } from '../utils/date'
+import { addDays, isOverdue, isPastTime, stamp, timeText, today } from '../utils/date'
 import { isBlank } from '../utils/text'
 import DuePicker from './DuePicker.vue'
 import Icon from './Icon.vue'
@@ -52,6 +52,16 @@ interface Draft {
   notes: string
 }
 const draft = reactive<Draft>({ title: '', is_completed: false, due: '', time: '', priority: 'normal', notes: '' })
+/** draft.due was set to today only because a time was picked (round 9, U11). */
+let autoDated = false
+/** The time taken off when the date was cleared, until the dialog closes (round 9, T8). */
+let lostTime = ''
+watch(
+  () => draft.due,
+  (d) => {
+    if (d !== today.value) autoDated = false
+  },
+)
 /** Values the dialog opened with, so unsaved changes can be detected. */
 const original = ref<Draft>({ ...draft })
 
@@ -81,6 +91,8 @@ watch(
     if (id === null) return
     const t = todos.value.find((x) => x.id === id)
     if (!t) return
+    autoDated = false
+    lostTime = ''
     Object.assign(draft, {
       title: t.title,
       is_completed: t.is_completed,
@@ -172,8 +184,15 @@ watch(
 // No date, no time.
 watch(
   () => draft.due,
-  (d) => {
-    if (!d) draft.time = ''
+  (d, old) => {
+    // No date, no time; but a mistaken tap on ไม่มีกำหนดส่ง gets the time back with the next date (round 9, T8).
+    if (!d) {
+      if (draft.time) lostTime = draft.time
+      draft.time = ''
+    } else if (!old && lostTime && !draft.time) {
+      draft.time = lostTime
+      lostTime = ''
+    }
   },
 )
 
@@ -199,19 +218,30 @@ const overdueNow = computed(() => {
 const draftTime = computed({
   get: () => draft.time,
   set: (v: string) => {
-    if (v && !draft.due) draft.due = today.value
+    if (v && !draft.due) {
+      draft.due = today.value
+      autoDated = true
+    } else if (!v && autoDated && draft.due === today.value) {
+      // The date came only from the time; clearing the time takes it back (round 9, U11).
+      draft.due = ''
+    }
+    if (!v || draft.due !== today.value) autoDated = false
     draft.time = v
   },
 })
 /** Due today and only its time has passed: "move to today" would change nothing. */
 const lateToday = computed(() => overdueNow.value && todo.value?.due_date === today.value)
 /** A time picked just now for today that has already passed (the saved one has the red box). */
-const pickedPastTime = computed(() => draft.time !== original.value.time && isPastTime(draft.due, draft.time, today.value))
+// Changing the day to today counts too: an old time may already have passed (round 9, T2).
+const pickedPastTime = computed(
+  () => (draft.time !== original.value.time || draft.due !== original.value.due) && isPastTime(draft.due, draft.time, today.value),
+)
 function move(days: 0 | 1) {
   const t = todo.value
   if (!t) return
   const msg = days === 0 ? `ย้าย “${t.title}” มาวันนี้แล้ว` : `ย้าย “${t.title}” ไปพรุ่งนี้แล้ว`
-  if (reschedule(t.id, addDays(today.value, days), msg)) statusNote.value = msg
+  const said = reschedule(t.id, addDays(today.value, days), msg)
+  if (said) statusNote.value = said
 }
 
 async function askDiscard() {
@@ -448,7 +478,7 @@ const sectionClass = toRef(() =>
               data-move-row
             >
               <span class="flex-[1_1_100%] text-[0.8125rem] leading-normal font-semibold sm:flex-1">
-                {{ lateToday ? 'เลยเวลาแล้ว ย้ายไปพรุ่งนี้ได้ทันที' : 'เลยกำหนดแล้ว ย้ายวันส่งได้ทันที' }}
+                {{ lateToday && todo?.due_time ? `เลยเวลา ${timeText(todo.due_time)} แล้ว ย้ายไปพรุ่งนี้ได้ทันที` : 'เลยกำหนดแล้ว ย้ายวันส่งได้ทันที' }}
               </span>
               <button v-if="!lateToday" type="button" class="btn-pill h-10 border-ink bg-white px-3 text-[0.8125rem] text-ink" @click="move(0)">ย้ายมาวันนี้</button>
               <button type="button" class="btn-pill h-10 border-ink bg-white px-3 text-[0.8125rem] text-ink" @click="move(1)">ย้ายไปพรุ่งนี้</button>
@@ -458,7 +488,7 @@ const sectionClass = toRef(() =>
             </span>
             <TimeField v-model="draftTime" :past="pickedPastTime" />
             <p v-if="pickedPastTime" data-past-hint class="m-0 text-[0.8125rem] leading-normal font-semibold text-danger">
-              เวลา {{ draft.time }} น. ของวันนี้ผ่านมาแล้ว งานนี้จะขึ้นว่าเลยกำหนดทันที
+              {{ draft.time }} น. ของวันนี้ผ่านไปแล้ว งานนี้จะเลยเวลาทันที
             </p>
             <span v-if="fieldErrors.due_time" role="alert" class="text-[0.75rem] leading-normal font-semibold text-danger">
               {{ fieldErrors.due_time }}

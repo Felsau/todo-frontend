@@ -27,12 +27,30 @@ function trigger(): HTMLElement | null {
   return root.value?.querySelector<HTMLElement>('[data-picker-trigger]') ?? null
 }
 
+/** Popover shift to the left (px) so it stays on screen near the right edge (round 9, U1). */
+const shift = ref(0)
+
+/** Keeps the popover inside the window, then scrolls it into view inside any scroll box (round 9, U1, U3). */
+async function place() {
+  const el = panel.value
+  if (!el || !isSm.value) return
+  const r = el.getBoundingClientRect()
+  const over = r.right - (document.documentElement.clientWidth - 8)
+  if (over > 0) {
+    shift.value = -Math.min(over, Math.max(0, r.left - 8))
+    await nextTick()
+  }
+  el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
 async function openPanel() {
+  shift.value = 0
   open.value = true
   await nextTick()
+  await place()
   const el = panel.value
   const target = el?.querySelector<HTMLElement>('[aria-pressed="true"]') ?? focusables(el)[0]
-  target?.focus()
+  target?.focus({ preventScroll: true })
 }
 
 function close(returnFocus = true) {
@@ -86,6 +104,7 @@ const triggerProps = () => ({
       :aria-label="props.label"
       class="absolute top-13 left-0 z-20 box-border rounded-[14px] border-2 bg-white p-3 shadow-brutal"
       :class="props.panelClass"
+      :style="shift ? { left: `${shift}px` } : undefined"
     >
       <slot :close="close" />
     </div>

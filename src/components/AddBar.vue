@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useAddForm } from '../composables/useAddForm'
 import { PRIORITY_HEX, PRIORITY_LABEL } from '../types'
 import { PAST_HINT_ID, isPastDate, isPastTime, pastAddHint, pastTimeHint, today } from '../utils/date'
@@ -23,10 +23,21 @@ const pastDay = computed(() => isPastDate(due.value, today.value))
 const pastClock = computed(() => isPastTime(due.value, time.value, today.value))
 const pastDue = computed(() => pastDay.value || pastClock.value)
 /* The time pill is always there, so picking a date does not shift the row; a time picked with no date means today. */
+/** The date was set to today only because a time was picked; clearing the time takes it back (round 9, U11). */
+let autoDated = false
+watch(due, (d) => {
+  if (d !== today.value) autoDated = false
+})
 const timeModel = computed({
   get: () => time.value,
   set: (v: string) => {
-    if (v && !due.value) due.value = today.value
+    if (v && !due.value) {
+      due.value = today.value
+      autoDated = true
+    } else if (!v && autoDated && due.value === today.value) {
+      due.value = ''
+    }
+    if (!v) autoDated = false
     time.value = v
   },
 })
@@ -79,7 +90,7 @@ defineExpose({ focus: () => input.value?.focus() })
       <TimeField v-model="timeModel" :past="pastClock" />
 
       <div class="flex items-center gap-2">
-        <span class="label" aria-hidden="true">ความสำคัญ</span>
+        <span class="label min-w-[4.25rem] sm:min-w-0" aria-hidden="true">ความสำคัญ</span>
       <AnchoredPicker label="ความสำคัญ">
         <template #trigger="{ triggerProps }">
           <button
