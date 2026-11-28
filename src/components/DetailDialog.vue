@@ -54,6 +54,7 @@ const original = ref<Draft>({ ...draft })
 
 const section = ref<HTMLElement | null>(null)
 const titleInput = ref<HTMLInputElement | null>(null)
+const headingEl = ref<HTMLElement | null>(null)
 const keepButton = ref<HTMLButtonElement | null>(null)
 
 const showConfirm = ref(false)
@@ -91,9 +92,14 @@ watch(
     statusNote.value = ''
     clearErrors()
     // An old error toast would only cover the dialog; the dialog shows its own errors (R2-07).
-    if (toast.value?.kind === 'error') dismissToast()
+    // A plain notice (copied link, saved) would cover its heading too; only a toast with a
+    // button, like เลิกทำ, stays (round 6, L4).
+    if (toast.value && (toast.value.kind === 'error' || !toast.value.actionLabel)) dismissToast()
     await nextTick()
-    titleInput.value?.focus()
+    // On a touch screen focusing the title would open the keyboard over the sheet when the
+    // person only wants to read; focus the heading there instead (round 6, L2).
+    if (window.matchMedia('(pointer: coarse)').matches) headingEl.value?.focus()
+    else titleInput.value?.focus()
   },
   { immediate: true },
 )
@@ -323,7 +329,7 @@ const sectionClass = toRef(() =>
         :class="band"
       >
         <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-          <h2 :id="ids.heading" class="m-0 text-[0.9375rem] leading-normal font-bold sm:text-[1rem]">รายละเอียดงาน</h2>
+          <h2 :id="ids.heading" ref="headingEl" tabindex="-1" class="m-0 focus:outline-none text-[0.9375rem] leading-normal font-bold sm:text-[1rem]">รายละเอียดงาน</h2>
           <!-- Importance always, and done as a badge of its own, so neither replaces the other (U7). -->
           <span class="rounded-full border-2 bg-white px-3 py-0.5 text-[0.8125rem] leading-normal font-semibold" data-detail-priority>
             {{ PRIORITY_LABEL[draft.priority] }}
@@ -357,7 +363,6 @@ const sectionClass = toRef(() =>
               :aria-describedby="ids.titleCount"
               :aria-invalid="!!titleError"
               class="field box-border h-12.5 text-[1.0625rem] font-bold sm:text-[1.25rem]"
-              :class="draft.is_completed && 'line-through'"
             />
             <div class="flex justify-between gap-2">
               <span v-if="titleError" role="alert" class="text-[0.75rem] leading-normal font-semibold text-danger">
@@ -396,7 +401,7 @@ const sectionClass = toRef(() =>
           <div class="flex flex-col gap-2">
             <span :id="ids.due" class="label">กำหนดส่ง</span>
             <div role="group" :aria-labelledby="ids.due" class="flex">
-              <DuePicker v-model="draft.due" :done="draft.is_completed" />
+              <DuePicker v-model="draft.due" :done="draft.is_completed" :saved="original.due" />
             </div>
             <div
               v-if="overdueNow"

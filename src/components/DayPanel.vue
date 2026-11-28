@@ -5,7 +5,7 @@ import { useDetail } from '../composables/useDetail'
 import { useIsSm } from '../composables/useMedia'
 import { useTodos } from '../composables/useTodos'
 import { PRIORITY_BG, PRIORITY_HEX, PRIORITY_LABEL, type Priority, type Todo } from '../types'
-import { PAST_DATE_HINT, dayMonthLong, diffDays, doneLabel, isOverdue, isPastDate, shortDate, today, weekdayName } from '../utils/date'
+import { dayMonthLong, diffDays, doneLabel, isOverdue, isPastDate, shortDate, today, weekdayName } from '../utils/date'
 import { isBlank } from '../utils/text'
 import AnchoredPicker from './AnchoredPicker.vue'
 import Icon from './Icon.vue'
@@ -37,9 +37,14 @@ const eyebrow = computed(() => {
   if (d === -1) return 'เมื่อวาน'
   return d > 0 ? `อีก ${d} วัน` : `${-d} วันก่อน`
 })
+/** The year only when it is not this year, as the add box already shows it (round 6, L10). */
+const yearText = computed(() => {
+  const y = props.selected.slice(0, 4)
+  return y === today.value.slice(0, 4) ? '' : ` ${Number(y) + 543}`
+})
 const title = computed(() =>
   isSm.value
-    ? `วัน${weekdayName(props.selected)}ที่ ${dayMonthLong(props.selected)}`
+    ? `วัน${weekdayName(props.selected)}ที่ ${dayMonthLong(props.selected)}${yearText.value}`
     : `${weekdayName(props.selected)} ${nice.value}`,
 )
 const countText = computed(() => {
@@ -50,11 +55,19 @@ const emptyText = computed(() =>
   offset.value === 0 ? 'วันนี้ยังไม่มีงาน เพิ่มงานด้านบนได้เลย' : `วันที่ ${nice.value} ยังไม่มีงาน เพิ่มงานด้านบนได้เลย`,
 )
 
-const upcoming = computed(() =>
+const allUpcoming = computed(() =>
   todos.value
     .filter((t) => !t.is_completed && t.due_date && t.due_date > props.selected)
-    .sort((a, b) => (a.due_date! < b.due_date! ? -1 : a.due_date! > b.due_date! ? 1 : 0))
-    .slice(0, 3),
+    .sort((a, b) => (a.due_date! < b.due_date! ? -1 : a.due_date! > b.due_date! ? 1 : 0)),
+)
+/** Only the first three; the heading says so when there are more (round 6, L6). */
+const upcoming = computed(() => allUpcoming.value.slice(0, 3))
+/**
+ * Picking a past day: the warning waits until something is typed, and says it is about the task
+ * being added, not the tasks listed below (round 6, M2).
+ */
+const pastHint = computed(() =>
+  past.value && !isBlank(draft.value) ? `วันที่ ${nice.value} ผ่านมาแล้ว งานที่เพิ่มลงวันนั้นจะขึ้นว่าเลยกำหนดทันที` : '',
 )
 
 /* add form: the new todo gets the selected day as its due date */
@@ -151,7 +164,7 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
           </template>
         </AnchoredPicker>
       </div>
-      <p v-if="past" data-past-hint class="m-0 text-[0.8125rem] leading-normal font-semibold text-danger">{{ PAST_DATE_HINT }}</p>
+      <p v-if="pastHint" data-past-hint class="m-0 text-[0.8125rem] leading-normal font-semibold text-danger">{{ pastHint }}</p>
     </form>
 
     <ul class="m-0 flex list-none flex-col gap-2.5 p-0 pr-1 pb-1">
@@ -247,8 +260,12 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
     <!-- mobile: the next few tasks after the selected day, in a box of their own -->
     <section v-if="!isSm && upcoming.length > 0" :class="box" aria-labelledby="day-next-heading" data-day-next>
       <div>
-        <h3 id="day-next-heading" class="m-0 text-[0.875rem] leading-normal font-bold">งานถัดไปหลังวันที่ {{ nice }}</h3>
-        <p class="m-0 text-[0.75rem] leading-normal font-semibold text-muted">ไม่ใช่งานของวันที่เลือก ดูวันส่งได้ทางขวา</p>
+        <h3 id="day-next-heading" class="m-0 text-[0.875rem] leading-normal font-bold">
+          {{ allUpcoming.length > upcoming.length ? `${upcoming.length} งานแรก` : 'งาน' }}ถัดไปหลังวันที่ {{ nice }}
+        </h3>
+        <p class="m-0 text-[0.75rem] leading-normal font-semibold text-muted">
+          ไม่ใช่งานของวันที่เลือก ดูวันส่งได้ทางขวา{{ allUpcoming.length > upcoming.length ? ` (มีทั้งหมด ${allUpcoming.length} งาน)` : '' }}
+        </p>
       </div>
       <div v-for="u in upcoming" :key="u.id" :class="row" :data-todo-id="u.id">
         <button
@@ -270,7 +287,13 @@ const toggleLabel = (t: Todo) => `ทำเครื่องหมายว่�
           <span class="sr-only">แก้ไข: </span>
           <span class="box-border size-3 flex-none rounded-[3px] border-2" :class="PRIORITY_BG[u.priority]" aria-hidden="true"></span>
           <span class="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold">{{ u.title }}</span>
-          <span class="flex-none rounded-full border-2 bg-white px-2 text-[0.75rem] font-semibold">{{ shortDate(u.due_date!) }}</span>
+          <!-- Already overdue (a past day is selected): red like everywhere else (round 6, L6). -->
+          <span
+            class="flex-none rounded-full border-2 px-2 text-[0.75rem] font-semibold"
+            :class="isOverdue(u.due_date, false, today) ? 'border-danger bg-danger text-white' : 'bg-white'"
+          >
+            <span v-if="isOverdue(u.due_date, false, today)" class="sr-only">เลยกำหนด </span>{{ shortDate(u.due_date!) }}
+          </span>
         </button>
       </div>
     </section>

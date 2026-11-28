@@ -43,7 +43,7 @@ const opt =
         data-due-none
         @click="choose('')"
       >
-        <span class="text-[0.8125rem] max-[22.5rem]:text-[0.75rem]" aria-hidden="true">ไม่มี</span>
+        <span class="text-[0.8125rem] max-[25rem]:text-[0.75rem]" aria-hidden="true">ไม่มี</span>
         <span class="text-[0.6875rem] text-[#333]" aria-hidden="true">กำหนดส่ง</span>
       </button>
       <button
@@ -55,7 +55,7 @@ const opt =
         :data-due-quick="o.label"
         @click="choose(o.value)"
       >
-        <span class="text-[0.8125rem] max-[22.5rem]:text-[0.75rem]">{{ o.label }}</span>
+        <span class="text-[0.8125rem] max-[25rem]:text-[0.75rem]">{{ o.label }}</span>
         <span class="text-[0.6875rem] text-[#333]">{{ shortDate(o.value) }}</span>
       </button>
       <ThaiDatePicker v-model="model" class="flex min-w-0">
@@ -68,8 +68,8 @@ const opt =
             :aria-label="custom ? `เลือกวัน ${fullShortDate(model)}` : 'เลือกวัน วันอื่น'"
             :aria-describedby="past ? hintId : undefined"
           >
-            <span class="flex items-center gap-1 text-[0.8125rem] max-[22.5rem]:text-[0.75rem] whitespace-nowrap" aria-hidden="true">
-              <Icon :name="custom ? 'check' : 'calendar'" :size="13" :stroke="custom ? 3.5 : 2.6" class="max-[22.5rem]:hidden" />
+            <span class="flex items-center gap-1 text-[0.8125rem] max-[25rem]:text-[0.75rem] whitespace-nowrap" aria-hidden="true">
+              <Icon :name="custom ? 'check' : 'calendar'" :size="13" :stroke="custom ? 3.5 : 2.6" class="max-[25rem]:hidden" />
               เลือกวัน
             </span>
             <span class="text-[0.6875rem]" :class="!custom && 'text-[#333]'" aria-hidden="true">

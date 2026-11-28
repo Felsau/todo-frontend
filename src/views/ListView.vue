@@ -18,7 +18,7 @@ import { estimateCard, splitColumns } from '../utils/columns'
 import { isOverdue, today } from '../utils/date'
 
 const { status, total } = useTodos()
-const { groups, emptyText, noteHit } = useListUi()
+const { groups, emptyText, noteHit, hiddenByFilter, filter } = useListUi()
 const isSm = useIsSm()
 const isLg = useIsLg()
 const { sheetOpen, fabShown, openSheet, due, priority } = useAddForm()
@@ -49,6 +49,9 @@ const columns = computed(() => {
     return estimateCard(t, extra)
   })
 })
+/* One group alone (for example the เสร็จแล้ว filter) fills the width as a grid of cards instead of one narrow column (round 6, L8). */
+const lone = computed(() => isSm.value && groups.value.length === 1)
+
 const grid =
   'm-0 grid list-none gap-3 p-0 pr-1 pb-1 sm:grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] sm:gap-4.5 lg:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))]'
 </script>
@@ -82,8 +85,31 @@ const grid =
         class="col-span-full rounded-2xl border-2 border-dashed px-4 py-7 text-center text-[0.9375rem] leading-normal font-bold sm:py-10 sm:text-[1rem]"
       >
         {{ emptyText }}
+        <div v-if="hiddenByFilter" class="mt-3 flex justify-center">
+          <button type="button" class="btn-pill bg-white px-4 text-[0.875rem] font-semibold" data-show-all @click="filter = 'all'">ดูในทั้งหมด</button>
+        </div>
       </li>
     </ul>
+    <section v-else-if="lone" class="flex flex-col gap-2.5 sm:gap-3" :aria-labelledby="`group-${groups[0].key}`" :data-group="groups[0].key" data-card-list>
+      <div class="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <h2
+          :id="`group-${groups[0].key}`"
+          tabindex="-1"
+          class="m-0 flex scroll-mt-4 items-center gap-2 text-[0.9375rem] leading-normal font-bold focus:outline-none sm:text-[1rem]"
+          :class="groups[0].key === 'overdue' && 'text-danger'"
+        >
+          <Icon v-if="groups[0].key === 'overdue'" name="alert" :size="17" :stroke="2.6" />
+          {{ groups[0].label }}
+          <span class="text-[0.8125rem] font-semibold" :class="groups[0].key === 'overdue' ? 'text-danger' : 'text-muted'">
+            {{ groups[0].countText }}
+          </span>
+        </h2>
+        <ClearDone v-if="groups[0].key === 'done'" />
+      </div>
+      <ul :class="[grid, 'items-start']">
+        <TodoCard v-for="t in groups[0].items" :key="t.id" :todo="t" />
+      </ul>
+    </section>
     <div v-else class="grid items-start gap-x-4.5 gap-y-6 sm:grid-cols-2 lg:grid-cols-3" data-card-list>
       <div v-for="(col, ci) in columns" :key="ci" class="flex min-w-0 flex-col gap-6" data-column>
         <section

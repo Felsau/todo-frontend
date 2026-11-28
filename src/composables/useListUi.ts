@@ -20,7 +20,7 @@ export const FILTERS: { key: FilterKey; label: string }[] = [
 export const SORTS: { key: SortKey; label: string }[] = [
   { key: 'due', label: 'ใกล้กำหนดก่อน' },
   { key: 'priority', label: 'สำคัญก่อน' },
-  { key: 'newest', label: 'เพิ่มล่าสุด' },
+  { key: 'newest', label: 'เพิ่มล่าสุดก่อน' },
 ]
 
 function matches(done: boolean, t: Todo, f: FilterKey): boolean {
@@ -122,9 +122,14 @@ export interface NoteHit {
 export function useListUi() {
   const { todos, effDone, todayProgress } = useTodos()
 
+  const hit = (t: Todo, q: string) => !q || t.title.toLowerCase().includes(q) || (t.notes ?? '').toLowerCase().includes(q)
+
+  /** Chip numbers. While searching they count the matches, so they agree with the cards (round 6, M5). */
   const counts = computed(() => {
+    const q = query.value.trim().toLowerCase()
     const out: Record<FilterKey, number> = { all: 0, active: 0, done: 0, overdue: 0 }
     for (const t of todos.value) {
+      if (!hit(t, q)) continue
       for (const f of FILTERS) if (matches(t.is_completed, t, f.key)) out[f.key]++
     }
     return out
@@ -132,12 +137,13 @@ export function useListUi() {
 
   const visible = computed(() => {
     const q = query.value.trim().toLowerCase()
-    return todos.value.filter(
-      (t) =>
-        matches(effDone(t), t, filter.value) &&
-        (!q || t.title.toLowerCase().includes(q) || (t.notes ?? '').toLowerCase().includes(q)),
-    )
+    return todos.value.filter((t) => matches(effDone(t), t, filter.value) && hit(t, q))
   })
+
+  /** A search found nothing under the chosen filter, but it does match tasks under ทั้งหมด (round 6, M1). */
+  const hiddenByFilter = computed(() =>
+    query.value.trim() && filter.value !== 'all' && visible.value.length === 0 ? counts.value.all : 0,
+  )
 
   /**
    * The visible tasks cut into labelled groups in the order of the chosen sort. Done tasks are
@@ -164,9 +170,11 @@ export function useListUi() {
       else items.sort(byNewest)
       const count = items.filter((t) => t.is_completed === (key === 'done')).length
       let countText = `${count} งาน`
-      if (key === 'today' && s === 'due') {
+      // Today's group under ทั้งหมด: the done ones sit in เสร็จแล้ว, so say how many went there
+      // instead of "2 จาก 3" over two cards (round 6, M5). Same totals as the yellow sticker.
+      if (key === 'today' && s === 'due' && filter.value === 'all' && !query.value.trim()) {
         const { done, total } = todayProgress.value
-        if (done > 0) countText = `ค้าง ${total - done} จาก ${total} งาน`
+        if (done > 0) countText = `ค้าง ${total - done} งาน เสร็จไปแล้ว ${done} งาน`
       }
       out.push({ key, label: GROUP_LABEL[key], items, count, countText })
     }
@@ -210,6 +218,10 @@ export function useListUi() {
 
   const emptyText = computed(() => {
     const q = query.value.trim()
+    if (q && hiddenByFilter.value) {
+      const label = FILTERS.find((f) => f.key === filter.value)?.label ?? ''
+      return `ไม่พบ “${q}” ใน${label} แต่มีในงานทั้งหมด ${hiddenByFilter.value} งาน`
+    }
     if (q) return `ไม่พบงานที่ตรงกับ “${q}”`
     if (filter.value === 'active') return 'ไม่มีงานค้าง เคลียร์หมดแล้ว'
     if (filter.value === 'done') return 'ยังไม่มีงานที่เสร็จ'
@@ -238,6 +250,7 @@ export function useListUi() {
     visible,
     groups,
     emptyText,
+    hiddenByFilter,
     toggleSearch,
     tickMessage,
     noteHit,

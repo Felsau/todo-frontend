@@ -64,9 +64,11 @@ async function onCellKey(e: KeyboardEvent, c: Cell) {
   document.querySelector<HTMLElement>(`[data-day="${iso}"]`)?.focus()
 }
 
+/** The panel follows the month: today when it is in that month, else the 1st (round 6, M4). */
 function shiftMonth(n: number) {
   const d = parseISO(monthStart.value)
   monthStart.value = toISO(new Date(d.getFullYear(), d.getMonth() + n, 1))
+  selected.value = firstOfMonth(today.value) === monthStart.value ? today.value : monthStart.value
 }
 
 /** Picking a day from another month switches the grid to that month. */
@@ -219,8 +221,15 @@ const navBtn =
             <span
               v-for="t in on(c.iso).slice(0, 2)"
               :key="t.id"
-              class="box-border block h-7 overflow-hidden rounded-md border-2 px-1.5 text-[0.75rem] leading-6 font-semibold text-ellipsis whitespace-nowrap"
-              :class="chipClass(t)"
+              class="box-border block overflow-hidden rounded-md border-2 px-1.5 text-[0.75rem] leading-6 font-semibold text-ellipsis"
+              :class="[
+                chipClass(t),
+                // A day with one task has room for its title on two lines at the same 24 px line
+                // height, so tone marks are not cut (UI-8) and the cell does not grow (round 6, L7).
+                on(c.iso).length === 1
+                  ? 'h-7 whitespace-nowrap lg:line-clamp-2 lg:h-auto lg:max-h-13 lg:whitespace-normal lg:break-words'
+                  : 'h-7 whitespace-nowrap',
+              ]"
               :title="t.title"
             >
               {{ t.title }}
@@ -242,10 +251,10 @@ const navBtn =
             <span class="box-border size-4 rounded border-2 bg-low"></span>ไม่รีบ
           </span>
           <span class="flex items-center gap-1.5">
-            <span class="box-border size-4 rounded border-2 bg-white"></span>เสร็จแล้ว
+            <span class="box-border size-4 rounded border-2 bg-danger"></span>เลยกำหนด
           </span>
           <span class="flex items-center gap-1.5">
-            <span class="box-border size-4 rounded border-2 bg-danger"></span>เลยกำหนด
+            <span class="box-border size-4 rounded border-2 bg-white"></span>เสร็จแล้ว
           </span>
         </div>
       </template>

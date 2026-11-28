@@ -13,8 +13,10 @@ const props = withDefaults(
     modelValue: string
     /** The task is already done, so a past date will not make it overdue. */
     done?: boolean
+    /** The date the task has now: no "you picked a past date" hint for it (round 6, M3). */
+    saved?: string
   }>(),
-  { done: false },
+  { done: false, saved: undefined },
 )
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
@@ -26,6 +28,8 @@ const value = computed({
 
 /** A date already gone: allowed, but say it will be overdue at once (UI 6). */
 const past = computed(() => !props.done && isPastDate(props.modelValue, today.value))
+/** The hint only for a past date picked just now; the saved one has the red move box (round 6, M3). */
+const pastHint = computed(() => past.value && props.modelValue !== props.saved)
 /** A picked date that is none of the quick options: the date pill is the selected one (UI 13). */
 const custom = computed(() => !!props.modelValue && !dueOptions(today.value).some((o) => o.value === props.modelValue))
 </script>
@@ -53,16 +57,17 @@ const custom = computed(() => !!props.modelValue && !dueOptions(today.value).som
           class="box-border flex h-11 items-center gap-2 rounded-full border-2 px-3.5 text-[0.8125rem] font-semibold"
           :class="past ? 'border-danger bg-[#ffe3e3] text-[#8f1d1d]' : custom ? 'bg-accent' : 'bg-white'"
           :data-date-pill="custom ? 'selected' : undefined"
-          :aria-label="props.modelValue ? `เลือกวัน ${fullShortDate(props.modelValue)}` : 'เลือกวัน'"
-          :aria-describedby="past ? hintId : undefined"
+          :aria-label="custom ? `เลือกวัน ${fullShortDate(props.modelValue)}` : 'เลือกวันอื่น'"
+          :aria-describedby="pastHint ? hintId : undefined"
         >
           <Icon v-if="custom" name="check" :size="14" :stroke="3.5" />
           <Icon v-else name="calendar" :size="15" />
-          <span aria-hidden="true">{{ props.modelValue ? fullShortDate(props.modelValue) : 'เลือกวัน' }}</span>
+          <!-- A date that a quick option already shows is not repeated here (round 6, L1). -->
+          <span aria-hidden="true">{{ custom ? fullShortDate(props.modelValue) : 'เลือกวันอื่น' }}</span>
         </button>
       </template>
     </ThaiDatePicker>
-    <p v-if="past" :id="hintId" data-past-hint class="m-0 w-full text-[0.8125rem] leading-normal font-semibold text-danger">
+    <p v-if="pastHint" :id="hintId" data-past-hint class="m-0 w-full text-[0.8125rem] leading-normal font-semibold text-danger">
       {{ PAST_DATE_HINT }}
     </p>
   </div>
