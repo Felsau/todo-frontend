@@ -31,8 +31,9 @@ const allDone = computed(() => todayProgress.value.total > 0 && todayProgress.va
 const cleared = computed(() => allDone.value && overdueCount.value === 0)
 const todayName = computed(() => {
   const { done, total } = todayProgress.value
-  if (total === 0) return 'วันนี้ไม่มีงานที่ครบกำหนด ดูงานวันนี้'
-  return `งานที่ครบกำหนดวันนี้ เสร็จ ${done} จาก ${total} งาน ดูงานวันนี้`
+  // Starts with the words on the sticker so voice control ("กด งานวันนี้") finds it (WCAG 2.5.3, Lighthouse round 5).
+  if (total === 0) return 'งานวันนี้ 0 งาน วันนี้ไม่มีงานที่ครบกำหนด ดูงานวันนี้'
+  return `งานวันนี้ ${done}/${total} ${cleared.value ? 'ครบแล้ว!' : 'เสร็จแล้ว'} คือเสร็จ ${done} จาก ${total} งานที่ครบกำหนดวันนี้ ดูงานวันนี้`
 })
 
 const smooth = () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches

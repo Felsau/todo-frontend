@@ -84,7 +84,7 @@ public/                           favicon, ไอคอน, manifest.webmanifest
 | `docs/qa/scripts/verify-fixes.mjs` (รอบแรก) | 10 |
 | `docs/qa/round2/scripts` | 52 |
 | `docs/qa/round3/scripts` | 150 |
-| `docs/qa/round4/scripts/verify-round4.mjs` | 398 |
+| `docs/qa/round4/scripts/verify-round4.mjs` | 401 |
 
 ส่วนการทดสอบ API ด้วย Postman และ newman (32 คำขอ 71 รายการตรวจ) อยู่ใน README ของ todo-api
 
